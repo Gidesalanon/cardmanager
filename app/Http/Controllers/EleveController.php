@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+class EleveController extends Controller
+{
+    public function index()
+    {
+        $ecole = auth()->user()->ecole;
+
+        $eleves = Eleve::with('classe')
+            ->where('ecole_id', $ecole->id)
+            ->get();
+
+        return view('school.eleves.index', compact('eleves'));
+    }
+
+    public function create()
+    {
+        $ecole = auth()->user()->ecole;
+        $classes = Classe::where('ecole_id', $ecole->id)->get();
+
+        return view('school.eleves.create', compact('classes'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'nom' => 'required',
+            'prenom' => 'required',
+            'classe_id' => 'required|exists:classes,id',
+            'numero_table' => 'nullable|unique:eleves,numero_table',
+        ]);
+
+        Eleve::create([
+            ...$request->all(),
+            'ecole_id' => auth()->user()->ecole->id,
+        ]);
+
+        return redirect()->route('school.students.index')
+            ->with('success', 'Élève enregistré');
+    }
+}
+

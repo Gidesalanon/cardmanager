@@ -1,0 +1,30 @@
+[15-Feb-2026 13:21:15 UTC] PHP Warning:  require(/home/donamibj/cardmanager/vendor/autoload.php): Failed to open stream: No such file or directory in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:21:15 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/donamibj/cardmanager/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/donamibj/cardmanager/artisan:10
+Stack trace:
+#0 {main}
+  thrown in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:21:46 UTC] PHP Warning:  require(/home/donamibj/cardmanager/vendor/autoload.php): Failed to open stream: No such file or directory in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:21:46 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/donamibj/cardmanager/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/donamibj/cardmanager/artisan:10
+Stack trace:
+#0 {main}
+  thrown in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:22:37 UTC] PHP Warning:  require(/home/donamibj/cardmanager/vendor/autoload.php): Failed to open stream: No such file or directory in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:22:37 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/donamibj/cardmanager/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/donamibj/cardmanager/artisan:10
+Stack trace:
+#0 {main}
+  thrown in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:27:22 UTC] PHP Warning:  require(/home/donamibj/cardmanager/vendor/autoload.php): Failed to open stream: No such file or directory in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:27:22 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/donamibj/cardmanager/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/donamibj/cardmanager/artisan:10
+Stack trace:
+#0 {main}
+  thrown in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:30:09 UTC] PHP Warning:  require(/home/donamibj/cardmanager/vendor/autoload.php): Failed to open stream: No such file or directory in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:30:09 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/donamibj/cardmanager/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/donamibj/cardmanager/artisan:10
+Stack trace:
+#0 {main}
+  thrown in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:30:21 UTC] PHP Warning:  require(/home/donamibj/cardmanager/vendor/autoload.php): Failed to open stream: No such file or directory in /home/donamibj/cardmanager/artisan on line 10
+[15-Feb-2026 13:30:21 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/donamibj/cardmanager/vendor/autoload.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/donamibj/cardmanager/artisan:10
+Stack trace:
+#0 {main}
+  thrown in /home/donamibj/cardmanager/artisan on line 10
