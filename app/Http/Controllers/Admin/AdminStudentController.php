@@ -199,45 +199,30 @@ class AdminStudentController extends Controller
 
 
     public function exportCardPdf(Eleve $eleve)
-{
-    $eleve->load(['ecole','classe']);
-    $activeYear = \App\Models\SchoolYear::active()->first();
+    {
+        $eleve->load(['ecole','classe']);
+        $activeYear = \App\Models\SchoolYear::active()->first();
 
-    $html = view('admin.eleves.card.card', compact('eleve','activeYear'))->render();
+        $pdf = Pdf::loadView('admin.eleves.card.card', compact('eleve','activeYear'))
+                  ->setPaper('a4', 'portrait');
 
-    $htmlPath = storage_path('app/public/temp_card.html');
-    $pdfPath  = storage_path('app/public/carte_'.$eleve->matricule_edumaster.'.pdf');
-
-    file_put_contents($htmlPath, $html);
-
-    $wkhtmltopdf = '"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"';
-
-    $command = $wkhtmltopdf . " --enable-local-file-access \"$htmlPath\" \"$pdfPath\"";
-
-    exec($command);
-
-    if (!file_exists($pdfPath)) {
-        abort(500, 'Le PDF n\'a pas été généré. Vérifie wkhtmltopdf.');
+        return $pdf->download('carte_'.$eleve->matricule_edumaster.'.pdf');
     }
 
-    return response()->download($pdfPath)->deleteFileAfterSend(true);
-}
+    public function exportClassCardsPdf()
+    {
+        $activeYear = \App\Models\SchoolYear::active()->first();
+        $eleves = Eleve::with(['ecole','classe'])->get();
 
-public function exportClassCardsPdf()
-{
-    $activeYear = \App\Models\SchoolYear::active()->first();
-    $eleves = \App\Models\Eleve::with(['ecole','classe'])->get();
+        if ($eleves->isEmpty()) {
+            abort(404, 'Aucun élève trouvé.');
+        }
 
-    if ($eleves->isEmpty()) {
-        abort(404, 'Aucun élève trouvé.');
+        $pdf = Pdf::loadView('admin.eleves.card.class-cards', compact('eleves','activeYear'))
+                  ->setPaper('a4', 'landscape');
+
+        return $pdf->download('cartes_classe.pdf');
     }
-
-    $pdf = Pdf::loadView('admin.eleves.card.class-cards', compact('eleves','activeYear'))
-              ->setPaper('a4', 'landscape');
-
-    return $pdf->download('cartes_classe.pdf');
-}
-
 
 
 
