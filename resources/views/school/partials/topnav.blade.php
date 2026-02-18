@@ -65,10 +65,17 @@
                             </svg>
                         </button>
                     </div>
-                    <button class="user-menu">
-                        <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}</div>
-                        <span class="user-name">{{ auth()->user()->name ?? 'User' }}</span>
-                    </button>
+                                            <a href="{{ route('profile.edit') }}" class="user-menu" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+                            <div class="user-avatar">
+                                @if(auth()->user()->avatar)
+                                    <img src="{{ asset('storage/' . auth()->user()->avatar) }}" 
+                                        style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                                @else
+                                    {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
+                                @endif
+                            </div>
+                            <span class="user-name" style="color: inherit;">{{ auth()->user()->name ?? 'User' }}</span>
+                        </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                     <button class="btn-logout" title="Déconnexion">
