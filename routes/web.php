@@ -25,6 +25,7 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+Route::get('test-import', function() { return "La route fonctionne !"; });
 /*
 |--------------------------------------------------------------------------
 | AUTHENTIFIÉS (DOIVENT ÊTRE VÉRIFIÉS)
