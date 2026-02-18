@@ -57,26 +57,26 @@ body{ margin:0; font-family: Arial, sans-serif; }
 <!-- RECTO -->
 <div class="card">
 
-<div class="tricolor">
-<div class="green"></div>
-<div class="yellow"></div>
-<div class="red"></div>
-</div>
+    <div class="tricolor">
+        <div class="green"></div>
+        <div class="yellow"></div>
+        <div class="red"></div>
+    </div>
 
-<img src="{{ public_path('storage/'.$eleve->photo) }}" class="photo">
+    <img src="{{ public_path('storage/'.$eleve->photo) }}" class="photo">
 
-<div class="info">
-<b>Nom:</b> {{ $eleve->nom }}<br>
-<b>Prénom:</b> {{ $eleve->prenom }}<br>
-Né(e) le {{ $eleve->date_naissance?->format('d/m/Y') }}<br>
-à {{ $eleve->lieu_naissance }}<br>
-Classe: {{ $eleve->classe->nom }}<br>
-Tel parent: {{ $eleve->telephone_tuteur }}
-</div>
+    <div class="info">
+        <b>Nom:</b> {{ $eleve->nom }}<br>
+        <b>Prénom:</b> {{ $eleve->prenom }}<br>
+        Né(e) le {{ $eleve->date_naissance?->format('d/m/Y') }}<br>
+        à {{ $eleve->lieu_naissance }}<br>
+        Classe: {{ $eleve->classe->nom }}<br>
+        Tel parent: {{ $eleve->telephone_tuteur }}
+    </div>
 
-<div class="recto-bottom">
-N° EducMaster: {{ $eleve->matricule_edumaster }}
-</div>
+    <div class="recto-bottom">
+    N° EducMaster: {{ $eleve->matricule_edumaster }}
+    </div>
 
 </div>
 
