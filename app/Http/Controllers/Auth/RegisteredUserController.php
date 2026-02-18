@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+
 
 class RegisteredUserController extends Controller
 {
@@ -32,7 +34,9 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        return redirect()->route('login')
-            ->with('success', 'Compte créé avec succès. Connectez-vous.');
+        Auth::login($user);
+
+        return redirect()->route('verification.notice');
+
     }
 }
