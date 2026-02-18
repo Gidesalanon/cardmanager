@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -24,18 +26,43 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $request->user()->fill($request->validated());
+            public function update(Request $request): RedirectResponse
+{
+    $user = $request->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+    // Validation
+    $request->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
+        'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        'password' => ['nullable', 'confirmed', 'min:8'],
+    ]);
+
+    // On ne change PAS le nom et l'email (même s'ils sont envoyés, on garde les anciens)
+    // Mais on doit laisser la validation passer pour que le reste s'enregistre.
+    
+    // Gestion de l'image (Avatar)
+    if ($request->hasFile('avatar')) {
+        // Supprimer l'ancien avatar s'il existe physiquement
+        if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+            Storage::disk('public')->delete($user->avatar);
         }
-
-        $request->user()->save();
-
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        
+        // Stockage du nouvel avatar
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->avatar = $path;
     }
+
+    // Gestion du mot de passe
+    if ($request->filled('password')) {
+        $user->password = Hash::make($request->password);
+    }
+
+    $user->save();
+
+    // On retourne avec le status pour afficher le message vert
+    return back()->with('status', 'profile-updated');
+}
 
     /**
      * Delete the user's account.
