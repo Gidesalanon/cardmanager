@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr" class="carbon">
+
 <head>
     <meta charset="UTF-8">
     <title>@yield('title', 'Admin')</title>
@@ -17,27 +18,27 @@
 
 <body>
 
-<div class="app-container">
+    <div class="app-container">
 
-    {{-- TOP NAV --}}
-    @include('admin.partials.topnav')
+        {{-- TOP NAV --}}
+        @include('admin.partials.topnav')
 
-    {{-- CONTENT --}}
-    <main class="main-content">
-        @yield('content')
-    </main>
+        {{-- CONTENT --}}
+        <main class="main-content">
+            @yield('content')
+        </main>
 
-    {{-- FOOTER --}}
-    <footer class="footer">
-        <p>© {{ date('Y') }} {{ config('app.name') }} | Admin</p>
-    </footer>
+        {{-- FOOTER --}}
+        <footer class="footer">
+            <p>© {{ date('Y') }} {{ config('app.name') }} | Admin</p>
+        </footer>
 
-</div>
+    </div>
 
-<script src="{{ asset('assets/admin/templatemo-daynight-script.js') }}"></script>
+    <script src="{{ asset('assets/admin/templatemo-daynight-script.js') }}"></script>
 
-    
-</script>
+    @stack('scripts')
 
 </body>
+
 </html>

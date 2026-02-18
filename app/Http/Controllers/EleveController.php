@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Eleve;
+use App\Models\Classe;
 
 class EleveController extends Controller
 {
@@ -27,11 +29,13 @@ class EleveController extends Controller
 
     public function store(Request $request)
     {
+        
         $request->validate([
             'nom' => 'required',
             'prenom' => 'required',
             'classe_id' => 'required|exists:classes,id',
-            'numero_table' => 'nullable|unique:eleves,numero_table',
+            'matricule_edumaster' => 'required|unique:eleves,matricule_edumaster',
+            'photo' => 'required|image|mimes:jpg,jpeg,png|max:2048', // 2MB max
         ]);
 
         Eleve::create([
@@ -43,4 +47,3 @@ class EleveController extends Controller
             ->with('success', 'Élève enregistré');
     }
 }
-
