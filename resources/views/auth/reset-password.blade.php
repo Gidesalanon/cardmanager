@@ -11,9 +11,10 @@
                 <h1 class="login-title">Nouveau mot de passe</h1>
             </div>
 
-            <form method="POST" action="{{ route('password.update') }}" class="login-form">
+            <form method="POST" action="{{ route('password.store') }}" class="login-form">
                 @csrf
-                <input type="hidden" name="token" value="{{ $token }}">
+             
+                <input type="hidden" name="token" value="{{ $request->route('token') }}">
 
                 <input type="hidden" name="email" value="{{ request('email') }}">
 
