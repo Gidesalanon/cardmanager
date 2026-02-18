@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\School;
 
 use App\Http\Controllers\Controller;
-use App\Models\Eleve;
 use App\Models\Classe;
+use App\Models\Eleve;
 use App\Models\SchoolYear;
+use Carbon\Carbon;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
-use Carbon\Carbon;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\Writer\PngWriter;
 
 class StudentImportController extends Controller
 {
@@ -100,7 +101,8 @@ class StudentImportController extends Controller
             'students'  => 'required|array|min:1',
         ]);
 
-        $ecole = auth()->user()->ecole;
+        // Au lieu de $ecole = auth()->user()->ecole;
+        $ecole = Auth::user()->ecole;
         abort_if(!$ecole, 403);
 
         DB::transaction(function () use ($request, $ecole) {

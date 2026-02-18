@@ -28,6 +28,6 @@ class VerifyEmailController extends Controller
         $request->session()->regenerateToken();
 
         // 4. Redirection vers login avec le message de succès
-        return redirect()->route('login')->with('status', 'Votre compte a été vérifié avec succès, veuillez vous connecter.');
+        return redirect()->route('login')->with('status', 'Votre compte a été vérifié avec succès. Veuillez vous connecter.');
     }
 }

@@ -14,6 +14,7 @@ use App\Http\Controllers\School\StudentController;
 use App\Http\Controllers\School\StudentImportController;
 use App\Http\Controllers\School\AjaxController;
 use App\Http\Controllers\Admin\AdminStudentController;
+use App\Http\Controllers\Admin\AdminStudentImportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,10 +27,10 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| AUTHENTIFIÉS
+| AUTHENTIFIÉS (DOIVENT ÊTRE VÉRIFIÉS)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
 
     // PROFIL
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -46,70 +47,26 @@ Route::middleware('auth')->group(function () {
         ->name('admin.')
         ->group(function () {
 
-            Route::get('/', [AdminDashboardController::class, 'index'])
-                ->name('dashboard');
+            Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
             Route::resource('school-years', SchoolYearController::class);
-            Route::post('school-years/{schoolYear}/toggle',
-                [SchoolYearController::class, 'toggle'])
-                ->name('school-years.toggle');
+            Route::post('school-years/{schoolYear}/toggle', [SchoolYearController::class, 'toggle'])->name('school-years.toggle');
+            Route::get('classes', [ClasseController::class, 'index'])->name('classes.index');
 
-            Route::get('classes', [ClasseController::class, 'index'])
-                ->name('classes.index');
+            /* ADMIN - IMPORT ÉLÈVES (Placé avant le resource) */
+            Route::get('eleves/import', [AdminStudentImportController::class, 'create'])->name('students.import.create');
+            Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])->name('students.import.preview');
+            Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
-                            /*
-            |--------------------------------------------------------------------------
-            | ADMIN - GESTION ÉLÈVES
-            |--------------------------------------------------------------------------
-            */
+            /* ADMIN - GESTION ÉLÈVES */
+            Route::resource('eleves', AdminStudentController::class)
+                ->parameters(['eleves' => 'eleve'])
+                ->names('students');
 
-            Route::get('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'index'])
-                ->name('students.index');
-
-            Route::get('eleves/create', [\App\Http\Controllers\Admin\AdminStudentController::class, 'create'])
-                ->name('students.create');
-
-            Route::post('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'store'])
-                ->name('students.store');
-
-            Route::get('eleves/{eleve}/edit', [\App\Http\Controllers\Admin\AdminStudentController::class, 'edit'])
-                ->name('students.edit');
-
-            Route::put('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'update'])
-                ->name('students.update');
-
-            Route::delete('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'destroy'])
-                ->name('students.destroy');
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | ADMIN - IMPORT
-            |--------------------------------------------------------------------------
-            */
-
-            Route::get('eleves/import', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'create'])
-                ->name('students.import.create');
-
-            Route::post('eleves/import/preview', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'preview'])
-                ->name('students.import.preview');
-
-            Route::post('eleves/import/store-all', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'storeAll'])
-                ->name('students.import.storeAll');
- 
-            Route::get('/students/{eleve}/export-card-pdf', 
-                [AdminStudentController::class, 'exportCardPdf']
-            )->name('students.export.card.pdf');
-
-            Route::get('/students/{eleve}/export-card-image', 
-                [AdminStudentController::class, 'exportCardImage']
-            )->name('students.export.card.image');
-
-            Route::get('/students/export-class-cards', 
-                [AdminStudentController::class, 'exportClassCardsPdf']
-            )->name('students.export.class.cards');
-
-                });
+            Route::get('/students/{eleve}/export-card-pdf', [AdminStudentController::class, 'exportCardPdf'])->name('students.export.card.pdf');
+            Route::get('/students/{eleve}/export-card-image', [AdminStudentController::class, 'exportCardImage'])->name('students.export.card.image');
+            Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])->name('students.export.class.cards');
+        });
 
     /*
     |--------------------------------------------------------------------------
@@ -121,32 +78,19 @@ Route::middleware('auth')->group(function () {
         ->name('school.')
         ->group(function () {
 
-            Route::get('/', [SchoolDashboardController::class, 'index'])
-                ->name('dashboard');
+            Route::get('/', [SchoolDashboardController::class, 'index'])->name('dashboard');
 
             // MON ECOLE
-            Route::get('mon-ecole/create', [EcoleController::class, 'create'])
-                ->name('ecole.create');
+            Route::get('mon-ecole/create', [EcoleController::class, 'create'])->name('ecole.create');
+            Route::post('mon-ecole', [EcoleController::class, 'store'])->name('ecole.store');
+            Route::get('mon-ecole', [EcoleController::class, 'show'])->name('ecole.show');
 
-            Route::post('mon-ecole', [EcoleController::class, 'store'])
-                ->name('ecole.store');
+            // 🔥 IMPORT ÉLÈVES (Placé AVANT le resource pour éviter la 404)
+            Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
+            Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
+            Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
-            Route::get('mon-ecole', [EcoleController::class, 'show'])
-                ->name('ecole.show');
-
-            // IMPORT ÉLÈVES
-            Route::get('eleves/import',
-                [StudentImportController::class, 'create'])
-                ->name('students.import.create');
-
-            Route::post('eleves/import/preview',
-                [StudentImportController::class, 'preview'])
-                ->name('students.import.preview');
-
-            Route::post('eleves/import/store-all',
-                [StudentImportController::class, 'storeAll'])
-                ->name('students.import.storeAll');
-
+            // RESOURCE (En dernier)
             Route::resource('eleves', StudentController::class)
                 ->parameters(['eleves' => 'eleve']) 
                 ->names('students');
@@ -164,14 +108,12 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('guest')->group(function () {
-    Route::get('/register', [RegisteredUserController::class, 'create'])
-        ->name('register');
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store']);
 });
 
 // GOOGLE AUTH
-Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])
-    ->name('google.login');
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.login');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 
 /*
@@ -182,11 +124,10 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 Route::get('/dashboard', function () {
     $user = Auth::user();
 
-    // Redirection vers l'admin si l'utilisateur est admin
     if ($user->usertype === 'admin') { 
         return redirect()->route('admin.dashboard');
     }
-    // Sinon redirection vers l'école
     return redirect()->route('school.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
 require __DIR__.'/auth.php';
