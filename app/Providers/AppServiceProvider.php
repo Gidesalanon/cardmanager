@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use App\Models\SchoolYear;
 use Illuminate\Support\Facades\View;
@@ -28,5 +27,6 @@ class AppServiceProvider extends ServiceProvider
                 SchoolYear::where('is_active', true)->first()
             );
         });
+        
     }
 }

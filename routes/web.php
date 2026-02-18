@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -172,5 +173,21 @@ Route::middleware('guest')->group(function () {
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])
     ->name('google.login');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
+/*
+|--------------------------------------------------------------------------
+| REDIRECTION APRÈS CONNEXION / VÉRIFICATION
+|--------------------------------------------------------------------------
+*/
+Route::get('/dashboard', function () {
+    $user = Auth::user();
 
+    // Redirection vers l'admin si l'utilisateur est admin
+    // (Adapte 'usertype' ou la condition selon ta base de données)
+    if ($user->usertype === 'admin') { 
+        return redirect()->route('admin.dashboard');
+    }
+
+    // Sinon redirection vers l'école
+    return redirect()->route('school.dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 require __DIR__.'/auth.php';
