@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class AdminStudentController extends Controller
 {
@@ -225,35 +226,16 @@ class AdminStudentController extends Controller
 public function exportClassCardsPdf()
 {
     $activeYear = \App\Models\SchoolYear::active()->first();
-
     $eleves = \App\Models\Eleve::with(['ecole','classe'])->get();
 
     if ($eleves->isEmpty()) {
         abort(404, 'Aucun élève trouvé.');
     }
 
-    $html = view('admin.eleves.card.class-cards', compact('eleves','activeYear'))->render();
+    $pdf = Pdf::loadView('admin.eleves.card.class-cards', compact('eleves','activeYear'))
+              ->setPaper('a4', 'landscape');
 
-    $htmlPath = storage_path('app/public/temp_class_cards.html');
-    $pdfPath  = storage_path('app/public/cartes_classe.pdf');
-
-    file_put_contents($htmlPath, $html);
-
-    $wkhtmltopdf = '"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"';
-
-    $command = $wkhtmltopdf
-        . " --enable-local-file-access"
-        . " --orientation Landscape"
-        . " \"$htmlPath\""
-        . " \"$pdfPath\"";
-
-    exec($command, $output, $resultCode);
-
-    if ($resultCode !== 0 || !file_exists($pdfPath)) {
-        dd($output, $resultCode);
-    }
-
-    return response()->download($pdfPath)->deleteFileAfterSend(true);
+    return $pdf->download('cartes_classe.pdf');
 }
 
 
