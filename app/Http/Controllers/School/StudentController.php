@@ -16,7 +16,7 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         $selectedClasse = $request->classe_id ?? null;
-        $activeYear = \App\Models\SchoolYear::where('is_active',1)->first();
+        $activeYear = \App\Models\SchoolYear::where('is_active', 1)->first();
 
         $query = Eleve::query();
 
@@ -47,23 +47,23 @@ class StudentController extends Controller
     }
 
     public function create()
-{
-    $allClasses = \App\Models\Classe::orderBy('nom')->get();
+    {
+        $allClasses = \App\Models\Classe::orderBy('nom')->get();
 
-    $classes = $allClasses
-        ->groupBy(function ($classe) {
+        $classes = $allClasses
+            ->groupBy(function ($classe) {
 
-            if (preg_match('/(2nde|1ère|Tle)/i', $classe->nom)) {
-                return $classe->nom;
-            }
+                if (preg_match('/(2nde|1ère|Tle)/i', $classe->nom)) {
+                    return $classe->nom;
+                }
 
-            return preg_replace('/\s+.*/', '', $classe->nom);
-        })
-        ->map(fn($group) => $group->first())
-        ->values();
+                return preg_replace('/\s+.*/', '', $classe->nom);
+            })
+            ->map(fn($group) => $group->first())
+            ->values();
 
-    return view('school.eleves.create', compact('classes'));
-}
+        return view('school.eleves.create', compact('classes'));
+    }
 
 
     public function store(Request $request)
@@ -84,14 +84,14 @@ class StudentController extends Controller
 
         // Upload photo
         $photoPath = $request->file('photo')
-            ->store('eleves/photos','public');
+            ->store('eleves/photos', 'public');
 
         // Génération numero_table automatique
-        $numeroTable = 'TB'.str_pad(Eleve::max('id') + 1,5,'0',STR_PAD_LEFT);
+        $numeroTable = 'TB' . str_pad(Eleve::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
         // Génération QR
         $qrCodePath = 'eleves/qrcodes/' . Str::slug($validated['matricule_edumaster']) . '.png';
-        $qrFullPath = storage_path('app/public/'.$qrCodePath);
+        $qrFullPath = storage_path('app/public/' . $qrCodePath);
 
         if (!file_exists(dirname($qrFullPath))) {
             mkdir(dirname($qrFullPath), 0755, true);
@@ -119,13 +119,13 @@ class StudentController extends Controller
 
         return redirect()
             ->route('school.students.index')
-            ->with('success','Élève enregistré avec succès.');
+            ->with('success', 'Élève enregistré avec succès.');
     }
 
     public function edit(Eleve $eleve)
     {
         $classes = Classe::orderBy('nom')->get();
-        return view('school.eleves.edit', compact('eleve','classes'));
+        return view('school.eleves.edit', compact('eleve', 'classes'));
     }
 
     public function update(Request $request, Eleve $eleve)
@@ -146,14 +146,14 @@ class StudentController extends Controller
             }
 
             $validated['photo'] = $request->file('photo')
-                ->store('eleves/photos','public');
+                ->store('eleves/photos', 'public');
         }
 
         $eleve->update($validated);
 
         return redirect()
             ->route('school.students.index')
-            ->with('success','Élève modifié avec succès.');
+            ->with('success', 'Élève modifié avec succès.');
     }
 
     public function destroy(Eleve $eleve)
@@ -166,6 +166,6 @@ class StudentController extends Controller
 
         return redirect()
             ->route('school.students.index')
-            ->with('success','Élève supprimé avec succès.');
+            ->with('success', 'Élève supprimé avec succès.');
     }
 }

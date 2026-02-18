@@ -29,13 +29,11 @@ class EleveController extends Controller
 
     public function store(Request $request)
     {
-        
         $request->validate([
             'nom' => 'required',
             'prenom' => 'required',
             'classe_id' => 'required|exists:classes,id',
-            'matricule_edumaster' => 'required|unique:eleves,matricule_edumaster',
-            'photo' => 'required|image|mimes:jpg,jpeg,png|max:2048', // 2MB max
+            'numero_table' => 'nullable|unique:eleves,numero_table',
         ]);
 
         Eleve::create([
