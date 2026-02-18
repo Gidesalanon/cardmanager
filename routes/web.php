@@ -148,7 +148,7 @@ Route::middleware('auth')->group(function () {
                 ->name('students.import.storeAll');
 
             Route::resource('eleves', StudentController::class)
-                ->parameters(['eleves' => 'eleve']) // 🔥 CORRECTION ICI
+                ->parameters(['eleves' => 'eleve']) 
                 ->names('students');
 
             // AJAX
@@ -173,6 +173,7 @@ Route::middleware('guest')->group(function () {
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])
     ->name('google.login');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
+
 /*
 |--------------------------------------------------------------------------
 | REDIRECTION APRÈS CONNEXION / VÉRIFICATION
@@ -182,11 +183,9 @@ Route::get('/dashboard', function () {
     $user = Auth::user();
 
     // Redirection vers l'admin si l'utilisateur est admin
-    // (Adapte 'usertype' ou la condition selon ta base de données)
     if ($user->usertype === 'admin') { 
         return redirect()->route('admin.dashboard');
     }
-
     // Sinon redirection vers l'école
     return redirect()->route('school.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
