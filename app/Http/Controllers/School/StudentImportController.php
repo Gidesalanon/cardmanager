@@ -36,62 +36,141 @@ class StudentImportController extends Controller
             'document' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        $rows = Excel::toArray([], $request->file('document'))[0] ?? [];
+        // Extraire les images du fichier Excel
+        $images = $this->extractImagesFromExcel($request->file('document'));
+
+        // Utiliser PhpSpreadsheet directement pour éviter le décalage
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($request->file('document')->getPathname());
+        $worksheet = $spreadsheet->getActiveSheet();
+        $highestRow = $worksheet->getHighestRow();
 
         $students = [];
         $seenMatricules = [];
 
-        foreach ($rows as $row) {
+        // Commencer à la ligne 4 (premier élève)
+        for ($row = 4; $row <= $highestRow; $row++) {
 
-            if (!isset($row[2])) continue;
+            $matricule = trim((string) $worksheet->getCell("C{$row}")->getValue());
 
-            $matricule = trim((string) $row[2]);
+            if (empty($matricule) || str_contains(strtolower($matricule), 'matricule')) {
+                continue;
+            }
 
-            if (
-                empty($matricule) ||
-                str_contains(strtolower($matricule), 'matricule')
-            ) continue;
-
-            if (in_array($matricule, $seenMatricules)) continue;
+            if (in_array($matricule, $seenMatricules)) {
+                continue;
+            }
             $seenMatricules[] = $matricule;
 
-            $rawSexe = strtoupper(trim((string)($row[5] ?? '')));
+            // Récupérer les autres colonnes
+            $nom = trim($worksheet->getCell("D{$row}")->getValue() ?? '');
+            $prenom = trim($worksheet->getCell("E{$row}")->getValue() ?? '');
+            $rawSexe = strtoupper(trim((string)($worksheet->getCell("F{$row}")->getValue() ?? '')));
+            $nationalite = trim($worksheet->getCell("G{$row}")->getValue() ?? '');
+            $dateCell = $worksheet->getCell("H{$row}")->getValue();
+            $lieuNaissance = trim($worksheet->getCell("I{$row}")->getValue() ?? '');
+            $telephone = trim($worksheet->getCell("J{$row}")->getValue() ?? '');
 
+            // Gestion du sexe
             $sexe = 'M';
             if ($rawSexe === 'F' || str_contains($rawSexe, 'FEM')) {
                 $sexe = 'F';
             }
 
+            // Gestion de la date
             $dateNaissance = null;
-
-            if (!empty($row[7])) {
+            if (!empty($dateCell)) {
                 try {
-                    if (is_numeric($row[7])) {
+                    if (is_numeric($dateCell)) {
                         $dateNaissance = Carbon::instance(
-                            \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[7])
+                            \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($dateCell)
                         )->format('Y-m-d');
                     } else {
-                        $dateNaissance = Carbon::parse($row[7])->format('Y-m-d');
+                        $dateNaissance = Carbon::parse($dateCell)->format('Y-m-d');
                     }
                 } catch (\Exception $e) {
                     $dateNaissance = null;
                 }
             }
 
+            // Récupérer la photo par numéro de ligne exact
+            $photo = $images[$row] ?? null;
+
             $students[] = [
-                'photo' => null,
+                'photo' => $photo,
                 'matricule' => $matricule,
-                'nom' => trim($row[3] ?? ''),
-                'prenom' => trim($row[4] ?? ''),
+                'nom' => $nom,
+                'prenom' => $prenom,
                 'sexe' => $sexe,
-                'nationalite' => trim($row[6] ?? ''),
+                'nationalite' => $nationalite,
                 'date_naissance' => $dateNaissance,
-                'lieu_naissance' => trim($row[8] ?? ''),
-                'telephone_tuteur' => trim($row[9] ?? ''),
+                'lieu_naissance' => $lieuNaissance,
+                'telephone_tuteur' => $telephone,
             ];
         }
 
         return response()->json(['students' => $students]);
+    }
+
+    private function extractImagesFromExcel($file)
+    {
+        $images = [];
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
+            $worksheet = $spreadsheet->getActiveSheet();
+
+            foreach ($worksheet->getDrawingCollection() as $drawing) {
+
+                $coordinates = $drawing->getCoordinates(); // ex: B4
+                preg_match('/\d+/', $coordinates, $matches);
+                $rowNumber = $matches[0] ?? null;
+
+                if (!$rowNumber) continue;
+
+                if ($drawing instanceof \PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing) {
+
+                    ob_start();
+                    call_user_func($drawing->getRenderingFunction(), $drawing->getImageResource());
+                    $imageContents = ob_get_clean();
+
+                    $mimeType = image_type_to_mime_type($drawing->getMimeType());
+
+                    $images[$rowNumber] = 'data:' . $mimeType . ';base64,' . base64_encode($imageContents);
+
+                } elseif ($drawing instanceof \PhpOffice\PhpSpreadsheet\Worksheet\Drawing) {
+
+                    $imagePath = $drawing->getPath();
+
+                    // Gérer les chemins ZIP (Excel temporaire)
+                    if (str_contains($imagePath, 'zip://')) {
+                        try {
+                            // Extraire l'image du ZIP
+                            $imageContents = file_get_contents($imagePath);
+                            if ($imageContents !== false) {
+                                // Détecter le MIME type depuis le contenu
+                                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                                $mimeType = finfo_buffer($finfo, $imageContents);
+                                finfo_close($finfo);
+                                 
+                                $images[$rowNumber] = 'data:' . $mimeType . ';base64,' . base64_encode($imageContents);
+                            }
+                        } catch (\Exception $e) {
+                            // Erreur silencieuse en production
+                        }
+                    } elseif (file_exists($imagePath)) {
+                        $imageContents = file_get_contents($imagePath);
+                        $mimeType = mime_content_type($imagePath);
+
+                        $images[$rowNumber] = 'data:' . $mimeType . ';base64,' . base64_encode($imageContents);
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            // Erreur silencieuse en production
+        }
+
+        return $images;
     }
 
     public function storeAll(Request $request)
@@ -146,7 +225,7 @@ class StudentImportController extends Controller
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($matricule) . '.png';
                 $qrCodeFullPath = storage_path('app/public/' . $qrCodePath);
 
-                // 🔥 créer le dossier si inexistant
+                //  créer le dossier si inexistant
                 $directory = dirname($qrCodeFullPath);
 
                 if (!file_exists($directory)) {

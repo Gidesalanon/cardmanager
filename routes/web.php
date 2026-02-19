@@ -64,10 +64,60 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->parameters(['eleves' => 'eleve'])
                 ->names('students');
 
+
             Route::get('/students/{eleve}/export-card-pdf', [AdminStudentController::class, 'exportCardPdf'])->name('students.export.card.pdf');
             Route::get('/students/{eleve}/export-card-image', [AdminStudentController::class, 'exportCardImage'])->name('students.export.card.image');
             Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])->name('students.export.class.cards');
         });
+
+            Route::get('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'index'])
+                ->name('students.index');
+
+            Route::get('eleves/create', [\App\Http\Controllers\Admin\AdminStudentController::class, 'create'])
+                ->name('students.create');
+
+            Route::post('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'store'])
+                ->name('students.store');
+
+            Route::get('eleves/{eleve}/edit', [\App\Http\Controllers\Admin\AdminStudentController::class, 'edit'])
+                ->name('students.edit');
+
+            Route::put('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'update'])
+                ->name('students.update');
+
+            Route::delete('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'destroy'])
+                ->name('students.destroy');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | ADMIN - IMPORT
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get('eleves/import', [\App\Http\Controllers\AdminStudentImportController::class, 'create'])
+                ->name('students.import.create');
+
+            Route::post('eleves/import/preview', [\App\Http\Controllers\AdminStudentImportController::class, 'preview'])
+                ->name('students.import.preview');
+
+            Route::post('eleves/import/store-all', [\App\Http\Controllers\AdminStudentImportController::class, 'storeAll'])
+                ->name('students.import.storeAll');
+ 
+            Route::get('/students/{eleve}/export-card-pdf', 
+                [AdminStudentController::class, 'exportCardPdf']
+            )->name('students.export.card.pdf');
+
+            Route::get('/students/{eleve}/export-card-image', 
+                [AdminStudentController::class, 'exportCardImage']
+            )->name('students.export.card.image');
+
+            Route::get('/students/export-class-cards', 
+                [AdminStudentController::class, 'exportClassCardsPdf']
+            )->name('students.export.class.cards');
+
+                });
+
 
     /*
     |--------------------------------------------------------------------------
@@ -91,9 +141,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
             Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
+            Route::post('mon-ecole', [EcoleController::class, 'store'])
+                ->name('ecole.store');
+
+            Route::get('mon-ecole', [EcoleController::class, 'show'])
+                ->name('ecole.show');
+
+            // IMPORT ÉLÈVES
+            Route::get('eleves/import',
+                [\App\Http\Controllers\School\StudentImportController::class, 'create'])
+                ->name('students.import.create');
+
+            Route::post('eleves/import/preview',
+                [\App\Http\Controllers\School\StudentImportController::class, 'preview'])
+                ->name('students.import.preview');
+
+            Route::post('eleves/import/store-all',
+                [\App\Http\Controllers\School\StudentImportController::class, 'storeAll'])
+                ->name('students.import.storeAll');
+
+
             // RESOURCE (En dernier)
             Route::resource('eleves', StudentController::class)
+
                 ->parameters(['eleves' => 'eleve']) 
+
+                ->parameters(['eleves' => 'eleve']) // CORRECTION ICI
                 ->names('students');
 
             // AJAX
