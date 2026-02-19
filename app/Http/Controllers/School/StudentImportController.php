@@ -37,11 +37,6 @@ class StudentImportController extends Controller
 
         // Extraire les images du fichier Excel
         $images = $this->extractImagesFromExcel($request->file('document'));
-        
-        // Debug temporaire
-        if (empty($images)) {
-            return response()->json(['debug' => 'Aucune image trouvée dans le fichier Excel']);
-        }
 
         // Utiliser PhpSpreadsheet directement pour éviter le décalage
         $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($request->file('document')->getPathname());
@@ -123,15 +118,11 @@ class StudentImportController extends Controller
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
             $worksheet = $spreadsheet->getActiveSheet();
 
-            \Log::info('Début extraction images - Nombre de dessins: ' . count($worksheet->getDrawingCollection()));
-
             foreach ($worksheet->getDrawingCollection() as $drawing) {
 
                 $coordinates = $drawing->getCoordinates(); // ex: B4
                 preg_match('/\d+/', $coordinates, $matches);
                 $rowNumber = $matches[0] ?? null;
-
-                \Log::info('Image trouvée - Coordonnées: ' . $coordinates . ', Ligne: ' . $rowNumber);
 
                 if (!$rowNumber) continue;
 
@@ -144,8 +135,6 @@ class StudentImportController extends Controller
                     $mimeType = image_type_to_mime_type($drawing->getMimeType());
 
                     $images[$rowNumber] = 'data:' . $mimeType . ';base64,' . base64_encode($imageContents);
-
-                    \Log::info('Image MemoryDrawing traitée - Ligne: ' . $rowNumber);
 
                 } elseif ($drawing instanceof \PhpOffice\PhpSpreadsheet\Worksheet\Drawing) {
 
@@ -163,31 +152,21 @@ class StudentImportController extends Controller
                                 finfo_close($finfo);
                                  
                                 $images[$rowNumber] = 'data:' . $mimeType . ';base64,' . base64_encode($imageContents);
-                                 
-                                \Log::info('Image ZIP traitée - Ligne: ' . $rowNumber . ', Taille: ' . strlen($imageContents) . ' bytes');
-                            } else {
-                                \Log::warning('Image ZIP non lue - Ligne: ' . $rowNumber . ', Chemin: ' . $imagePath);
                             }
                         } catch (\Exception $e) {
-                            \Log::error('Erreur extraction ZIP - Ligne: ' . $rowNumber . ', Erreur: ' . $e->getMessage());
+                            // Erreur silencieuse en production
                         }
                     } elseif (file_exists($imagePath)) {
                         $imageContents = file_get_contents($imagePath);
                         $mimeType = mime_content_type($imagePath);
 
                         $images[$rowNumber] = 'data:' . $mimeType . ';base64,' . base64_encode($imageContents);
-
-                        \Log::info('Image Drawing traitée - Ligne: ' . $rowNumber . ', Chemin: ' . $imagePath);
-                    } else {
-                        \Log::warning('Image Drawing non trouvée - Ligne: ' . $rowNumber . ', Chemin: ' . $imagePath);
                     }
                 }
             }
 
-            \Log::info('Extraction terminée - Images extraites: ' . count($images));
-
         } catch (\Exception $e) {
-            \Log::error('Error extracting images: ' . $e->getMessage());
+            // Erreur silencieuse en production
         }
 
         return $images;
