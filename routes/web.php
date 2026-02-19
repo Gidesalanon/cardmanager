@@ -135,19 +135,19 @@ Route::middleware('auth')->group(function () {
 
             // IMPORT ÉLÈVES
             Route::get('eleves/import',
-                [StudentImportController::class, 'create'])
+                [\App\Http\Controllers\School\StudentImportController::class, 'create'])
                 ->name('students.import.create');
 
             Route::post('eleves/import/preview',
-                [StudentImportController::class, 'preview'])
+                [\App\Http\Controllers\School\StudentImportController::class, 'preview'])
                 ->name('students.import.preview');
 
             Route::post('eleves/import/store-all',
-                [StudentImportController::class, 'storeAll'])
+                [\App\Http\Controllers\School\StudentImportController::class, 'storeAll'])
                 ->name('students.import.storeAll');
 
             Route::resource('eleves', StudentController::class)
-                ->parameters(['eleves' => 'eleve']) // 🔥 CORRECTION ICI
+                ->parameters(['eleves' => 'eleve']) // CORRECTION ICI
                 ->names('students');
 
             // AJAX

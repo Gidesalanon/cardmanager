@@ -144,7 +144,7 @@ class StudentImportController extends Controller
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($matricule) . '.png';
                 $qrCodeFullPath = storage_path('app/public/' . $qrCodePath);
 
-                // 🔥 créer le dossier si inexistant
+                //  créer le dossier si inexistant
                 $directory = dirname($qrCodeFullPath);
 
                 if (!file_exists($directory)) {
