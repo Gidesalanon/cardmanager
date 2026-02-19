@@ -87,13 +87,13 @@ Route::middleware('auth')->group(function () {
             |--------------------------------------------------------------------------
             */
 
-            Route::get('eleves/import', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'create'])
+            Route::get('eleves/import', [\App\Http\Controllers\AdminStudentImportController::class, 'create'])
                 ->name('students.import.create');
 
-            Route::post('eleves/import/preview', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'preview'])
+            Route::post('eleves/import/preview', [\App\Http\Controllers\AdminStudentImportController::class, 'preview'])
                 ->name('students.import.preview');
 
-            Route::post('eleves/import/store-all', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'storeAll'])
+            Route::post('eleves/import/store-all', [\App\Http\Controllers\AdminStudentImportController::class, 'storeAll'])
                 ->name('students.import.storeAll');
  
             Route::get('/students/{eleve}/export-card-pdf', 
