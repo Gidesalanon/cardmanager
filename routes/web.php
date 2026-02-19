@@ -174,7 +174,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('ajax/series', [AjaxController::class, 'seriesByClasse']);
             Route::get('ajax/partitions', [AjaxController::class, 'partitions']);
         });
-});
+
 
 /*
 |--------------------------------------------------------------------------
