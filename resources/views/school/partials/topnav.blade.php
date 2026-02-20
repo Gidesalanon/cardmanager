@@ -18,7 +18,7 @@
                 {{-- Dashboard --}}
                 <a href="{{ route('school.dashboard') }}"
                    class="nav-link {{ request()->routeIs('school.dashboard') ? 'active' : '' }}">
-                    Dashboard
+                    Tableau de bord
                 </a>
 
                 {{-- Mon école --}}

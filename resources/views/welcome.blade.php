@@ -30,8 +30,53 @@ $(function () {
 });
 </script>
 </head>
-
 <body>
+  <!-- PRELOADER -->
+  <div id="preloader" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff; /* Fond blanc au début */
+      z-index: 999999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      transition: opacity 0.5s ease-out, visibility 0.5s;
+  ">
+      <!-- Tu peux mettre ton logo ici ou un spinner -->
+      <div class="spinner"></div>
+      <p style="margin-top: 20px; font-family: sans-serif; color: #333; font-weight: bold;">
+          Chargement de DONAMI CHRIST...
+      </p>
+  </div>
+  
+  <style>
+      /* Style du spinner (le cercle qui tourne) */
+      .spinner {
+          width: 50px;
+          height: 50px;
+          border: 5px solid #f3f3f3;
+          border-top: 5px solid #00b4d8; /* La couleur bleue de ton thème */
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+      }
+  
+      @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+      }
+  
+      /* Optionnel : Si tu es en mode sombre (Carbon) */
+      .carbon #preloader {
+          background-color: #1a1a1a !important;
+      }
+      .carbon #preloader p {
+          color: #ffffff !important;
+      }
+  </style>
 
 <div class="header" id="home">
   <div class="container">
@@ -250,5 +295,22 @@ $(function () {
   <p>Copyright © 2026 DONAMI. Tous droits réservés.</p>
 </div>
 
+<script>
+    // 'load' attend que TOUTE la page soit chargée (images, scripts, etc.)
+    window.addEventListener('load', function() {
+        const preloader = document.getElementById('preloader');
+        
+        // On ajoute un petit délai de 500ms pour que ce soit fluide
+        setTimeout(() => {
+            preloader.style.opacity = '0';
+            preloader.style.visibility = 'hidden';
+            
+            // On retire complètement du DOM après l'animation
+            setTimeout(() => {
+                preloader.remove();
+            }, 500);
+        }, 500);
+    });
+</script>
 </body>
 </html>
