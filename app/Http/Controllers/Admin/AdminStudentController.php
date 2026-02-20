@@ -219,7 +219,7 @@ class AdminStudentController extends Controller
         $eleve->load(['ecole', 'classe']);
         $activeYear = \App\Models\SchoolYear::active()->first();
 
-        $pdf = Pdf::loadView('admin.eleves.card.cards', compact('eleve', 'activeYear'))
+        $pdf = Pdf::loadView('admin.eleves.card.card', compact('eleve', 'activeYear'))
             ->setPaper('a4', 'portrait');
 
         return $pdf->download('carte_' . $eleve->matricule_edumaster . '.pdf');
