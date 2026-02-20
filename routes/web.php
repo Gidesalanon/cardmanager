@@ -82,6 +82,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('eleves/import', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'create'])
                 ->name('students.import.create');
+        });
 
     Route::post('eleves/import/preview', [\App\Http\Controllers\AdminStudentImportController::class, 'preview'])
         ->name('students.import.preview');
@@ -196,5 +197,3 @@ Route::get('/dashboard', function () {
     }
     return redirect()->route('school.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
-
-require __DIR__ . '/auth.php';
