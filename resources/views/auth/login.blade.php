@@ -4,6 +4,36 @@
 
 @section('content')
 
+<style>
+    /* Style pour le conteneur du mot de passe */
+    .password-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 15px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        padding: 0;
+    }
+
+    .password-toggle:hover {
+        color: #374151;
+    }
+
+    /* Ajustement de l'input pour ne pas que le texte passe sous l'icône */
+    .form-input-password {
+        padding-right: 45px !important;
+    }
+</style>
+
 <div class="login-theme-toggle">
     <div class="theme-toggle">
         <button class="theme-btn theme-btn-snow active" onclick="setTheme('snow')"></button>
@@ -16,21 +46,21 @@
         <div class="login-card">
 
             <div class="login-header">
-    <div class="login-logo">
-        <div class="logo-icon">
-            <img 
-                src="{{ asset('assets/web/images/logo-3.png') }}" 
-                alt="Logo" 
-                style="width: 100%; height: 100%; object-fit: contain;"
-            >
-        </div>
-        <span>{{ config('app.name') }}</span>
-    </div>
-    <h1 class="login-title">Connexion</h1>
-    <p class="login-subtitle">Accédez à votre espace</p>
-</div>
+                <div class="login-logo">
+                    <div class="logo-icon">
+                        <img 
+                            src="{{ asset('assets/web/images/logo-3.png') }}" 
+                            alt="Logo" 
+                            style="width: 100%; height: 100%; object-fit: contain;"
+                        >
+                    </div>
+                    <span>{{ config('app.name') }}</span>
+                </div>
+                <h1 class="login-title">Connexion</h1>
+                <p class="login-subtitle">Accédez à votre espace</p>
+            </div>
 
-            {{-- MESSAGE DE SUCCÈS (Vérification email) --}}
+            {{-- MESSAGE DE SUCCÈS --}}
             @if (session('status'))
                 <div class="alert alert-success" style="background-color: #d4edda; color: #155724; border-color: #c3e6cb; padding: 0.75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem;">
                     {{ session('status') }}
@@ -62,12 +92,26 @@
 
                 <div class="form-group">
                     <label class="form-label">Mot de passe</label>
-                    <input
-                        type="password"
-                        name="password"
-                        class="form-input"
-                        required
-                    >
+                    <div class="password-container">
+                        <input
+                            id="password"
+                            type="password"
+                            name="password"
+                            class="form-input form-input-password"
+                            required
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility()">
+                            {{-- Icône Œil (Ouvert par défaut) --}}
+                            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            {{-- Icône Œil Barré (Masqué par défaut) --}}
+                            <svg id="eye-off-icon" class="hidden" style="display:none;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -112,5 +156,23 @@
         </p>
     </div>
 </div>
+
+<script>
+    function togglePasswordVisibility() {
+        const passwordInput = document.getElementById('password');
+        const eyeIcon = document.getElementById('eye-icon');
+        const eyeOffIcon = document.getElementById('eye-off-icon');
+
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.style.display = 'none';
+            eyeOffIcon.style.display = 'block';
+        } else {
+            passwordInput.type = 'password';
+            eyeIcon.style.display = 'block';
+            eyeOffIcon.style.display = 'none';
+        }
+    }
+</script>
 
 @endsection
