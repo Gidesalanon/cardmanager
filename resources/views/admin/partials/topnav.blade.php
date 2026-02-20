@@ -61,17 +61,6 @@
                     </a>
                 </div>
 
-                                {{-- Dans ton topnav.blade.php --}}
-                
-                    <{{-- Dans resources/views/admin/partials/topnav.blade.php --}}
-                <div class="nav-item">
-                    <a href="{{ route('school.students.viewCards') }}" 
-                    class="nav-link {{ request()->routeIs('school.students.viewCards') ? 'active' : '' }}">
-                        <!-- Ton icône Carte -->
-                        Carte
-                    </a>
-                </div>
-                
             </div>
         </div>
          <div class="nav-right">
