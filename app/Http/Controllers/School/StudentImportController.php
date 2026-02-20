@@ -131,16 +131,24 @@ class StudentImportController extends Controller
         $s = strtoupper(Str::ascii($getVal('sexe')));
         $sexe = (str_starts_with($s, 'F') || str_contains($s, 'FEM')) ? 'F' : 'M';
 
+        // --- Logique Génération Matricule ---
+        $matricule = $getVal('matricule');
+        if (empty($matricule)) {
+            // On prend les 4 premières lettres du nom, on enlève les espaces et accents
+            $cleanNom = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', Str::ascii($nom)), 0, 3));
+            $matricule = "ID-" . $cleanNom . $row; 
+        }
+
         $students[] = [
             'photo'            => $images[$row] ?? null, 
-            'matricule'        => $getVal('matricule'), 
+            'matricule'        => $matricule, 
             'nom'              => strtoupper($nom),
             'prenom'           => ucwords(strtolower($prenom)),
             'sexe'             => $sexe,
             'nationalite'      => 'BENIN',
             'date_naissance'   => $dateNaiss,
             'lieu_naissance'   => $lieuNaiss ?: '',
-            'telephone_tuteur' => $getVal('telephone'),
+            'telephone_tuteur' => $getVal('telephone') ?: '00000000',
         ];
     }
     return response()->json(['students' => $students]);
