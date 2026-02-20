@@ -46,6 +46,13 @@ abstract class BaseParser
                     \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($excelDate)
                 )->format('Y-m-d');
             } else {
+                // Essayer d'abord le format français JJ/MM/AAAA
+                $date = \DateTime::createFromFormat('d/m/Y', $excelDate);
+                if ($date) {
+                    return $date->format('Y-m-d');
+                }
+                
+                // Si ça échoue, essayer avec Carbon pour d'autres formats
                 return \Carbon\Carbon::parse($excelDate)->format('Y-m-d');
             }
         } catch (\Exception $e) {
