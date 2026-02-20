@@ -164,66 +164,63 @@ class AdminStudentController extends Controller
             ->with('success', 'Élève supprimé avec succès.');
     }
 
-    
+
     public function exportCardImage(Eleve $eleve)
-{
-    $eleve->load(['ecole', 'classe']);
-    $activeYear = \App\Models\SchoolYear::active()->first();
+    {
+        $eleve->load(['ecole', 'classe']);
+        $activeYear = \App\Models\SchoolYear::active()->first();
 
-    $html = view('admin.eleves.card.card', compact('eleve', 'activeYear'))->render();
+        $html = view('admin.eleves.card.card', compact('eleve', 'activeYear'))->render();
 
-    $htmlPath = storage_path('app/public/temp_card.html');
-    $imagePath = storage_path('app/public/carte_'.$eleve->matricule_edumaster.'.png');
+        $htmlPath = storage_path('app/public/temp_card.html');
+        $imagePath = storage_path('app/public/carte_' . $eleve->matricule_edumaster . '.png');
 
-    file_put_contents($htmlPath, $html);
+        file_put_contents($htmlPath, $html);
 
-    // ⚠️ ADAPTE ce chemin si besoin
-    $wkhtmltoimage = '"C:\Program Files\wkhtmltopdf\bin\wkhtmltoimage.exe"';
+        // ADAPTE ce chemin si besoin
+        $wkhtmltoimage = '"C:\Program Files\wkhtmltopdf\bin\wkhtmltoimage.exe"';
 
-    $command = $wkhtmltoimage
-        . " --enable-local-file-access"
-        . " --width 1012"
-        . " --height 638"
-        . " \"$htmlPath\""
-        . " \"$imagePath\"";
+        $command = $wkhtmltoimage
+            . " --enable-local-file-access"
+            . " --width 1012"
+            . " --height 638"
+            . " \"$htmlPath\""
+            . " \"$imagePath\"";
 
-    exec($command, $output, $resultCode);
+        exec($command, $output, $resultCode);
 
-    // DEBUG si problème
-    if ($resultCode !== 0 || !file_exists($imagePath)) {
-        dd($output, $resultCode);
+        // DEBUG si problème
+        if ($resultCode !== 0 || !file_exists($imagePath)) {
+            dd($output, $resultCode);
+        }
+
+        return response()->download($imagePath)->deleteFileAfterSend(true);
     }
-
-    return response()->download($imagePath)->deleteFileAfterSend(true);
-}
 
 
     public function exportCardPdf(Eleve $eleve)
     {
-        $eleve->load(['ecole','classe']);
+        $eleve->load(['ecole', 'classe']);
         $activeYear = \App\Models\SchoolYear::active()->first();
 
-        $pdf = Pdf::loadView('admin.eleves.card.card', compact('eleve','activeYear'))
-                  ->setPaper('a4', 'portrait');
+        $pdf = Pdf::loadView('admin.eleves.card.cards', compact('eleve', 'activeYear'))
+            ->setPaper('a4', 'portrait');
 
-        return $pdf->download('carte_'.$eleve->matricule_edumaster.'.pdf');
+        return $pdf->download('carte_' . $eleve->matricule_edumaster . '.pdf');
     }
 
     public function exportClassCardsPdf()
     {
         $activeYear = \App\Models\SchoolYear::active()->first();
-        $eleves = Eleve::with(['ecole','classe'])->get();
+        $eleves = Eleve::with(['ecole', 'classe'])->get();
 
         if ($eleves->isEmpty()) {
             abort(404, 'Aucun élève trouvé.');
         }
 
-        $pdf = Pdf::loadView('admin.eleves.card.class-cards', compact('eleves','activeYear'))
-                  ->setPaper('a4', 'landscape');
+        $pdf = Pdf::loadView('admin.eleves.card.class-cards', compact('eleves', 'activeYear'))
+            ->setPaper('a4', 'landscape');
 
         return $pdf->download('cartes_classe.pdf');
     }
-
-
-
 }

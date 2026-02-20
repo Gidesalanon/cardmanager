@@ -21,11 +21,14 @@ use App\Http\Controllers\Admin\AdminStudentImportController;
 | ACCUEIL
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::get('test-import', function() { return "La route fonctionne !"; });
+Route::get('test-import', function () {
+    return "La route fonctionne !";
+});
 /*
 |--------------------------------------------------------------------------
 | AUTHENTIFIÉS (DOIVENT ÊTRE VÉRIFIÉS)
@@ -70,110 +73,118 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])->name('students.export.class.cards');
         });
 
-            Route::get('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'index'])
-                ->name('students.index');
+    // Route::get('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'index'])
+    //     ->name('students.index');
 
-            Route::get('eleves/create', [\App\Http\Controllers\Admin\AdminStudentController::class, 'create'])
-                ->name('students.create');
+    // Route::get('eleves/create', [\App\Http\Controllers\Admin\AdminStudentController::class, 'create'])
+    //     ->name('students.create');
 
-            Route::post('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'store'])
-                ->name('students.store');
+    // Route::post('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'store'])
+    //     ->name('students.store');
 
-            Route::get('eleves/{eleve}/edit', [\App\Http\Controllers\Admin\AdminStudentController::class, 'edit'])
-                ->name('students.edit');
+    // Route::get('eleves/{eleve}/edit', [\App\Http\Controllers\Admin\AdminStudentController::class, 'edit'])
+    //     ->name('students.edit');
 
-            Route::put('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'update'])
-                ->name('students.update');
+    // Route::put('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'update'])
+    //     ->name('students.update');
 
-            Route::delete('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'destroy'])
-                ->name('students.destroy');
+    // Route::delete('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'destroy'])
+    //     ->name('students.destroy');
 
 
-            /*
+    /*
             |--------------------------------------------------------------------------
             | ADMIN - IMPORT
             |--------------------------------------------------------------------------
             */
 
-            Route::get('eleves/import', [\App\Http\Controllers\AdminStudentImportController::class, 'create'])
-                ->name('students.import.create');
+    Route::get('eleves/import', [\App\Http\Controllers\AdminStudentImportController::class, 'create'])
+        ->name('students.import.create');
 
-            Route::post('eleves/import/preview', [\App\Http\Controllers\AdminStudentImportController::class, 'preview'])
-                ->name('students.import.preview');
+    Route::post('eleves/import/preview', [\App\Http\Controllers\AdminStudentImportController::class, 'preview'])
+        ->name('students.import.preview');
 
-            Route::post('eleves/import/store-all', [\App\Http\Controllers\AdminStudentImportController::class, 'storeAll'])
-                ->name('students.import.storeAll');
- 
-            Route::get('/students/{eleve}/export-card-pdf', 
-                [AdminStudentController::class, 'exportCardPdf']
-            )->name('students.export.card.pdf');
+    Route::post('eleves/import/store-all', [\App\Http\Controllers\AdminStudentImportController::class, 'storeAll'])
+        ->name('students.import.storeAll');
 
-            Route::get('/students/{eleve}/export-card-image', 
-                [AdminStudentController::class, 'exportCardImage']
-            )->name('students.export.card.image');
+    Route::get(
+        '/students/{eleve}/export-card-pdf',
+        [AdminStudentController::class, 'exportCardPdf']
+    )->name('students.export.card.pdf');
 
-            Route::get('/students/export-class-cards', 
-                [AdminStudentController::class, 'exportClassCardsPdf']
-            )->name('students.export.class.cards');
+    Route::get(
+        '/students/{eleve}/export-card-image',
+        [AdminStudentController::class, 'exportCardImage']
+    )->name('students.export.card.image');
 
-                });
+    Route::get(
+        '/students/export-class-cards',
+        [AdminStudentController::class, 'exportClassCardsPdf']
+    )->name('students.export.class.cards');
+});
 
 
-    /*
+/*
     |--------------------------------------------------------------------------
     | ECOLE
     |--------------------------------------------------------------------------
     */
-    Route::prefix('ecole')
-        ->middleware(['ecole'])
-        ->name('school.')
-        ->group(function () {
+Route::prefix('ecole')
+    ->middleware(['ecole'])
+    ->name('school.')
+    ->group(function () {
 
-            Route::get('/', [SchoolDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', [SchoolDashboardController::class, 'index'])->name('dashboard');
 
-            // MON ECOLE
-            Route::get('mon-ecole/create', [EcoleController::class, 'create'])->name('ecole.create');
-            Route::post('mon-ecole', [EcoleController::class, 'store'])->name('ecole.store');
-            Route::get('mon-ecole', [EcoleController::class, 'show'])->name('ecole.show');
+        // MON ECOLE
+        Route::get('mon-ecole/create', [EcoleController::class, 'create'])->name('ecole.create');
+        Route::post('mon-ecole', [EcoleController::class, 'store'])->name('ecole.store');
+        Route::get('mon-ecole', [EcoleController::class, 'show'])->name('ecole.show');
 
-            // 🔥 IMPORT ÉLÈVES (Placé AVANT le resource pour éviter la 404)
-            Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
-            Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
-            Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
+        // 🔥 IMPORT ÉLÈVES (Placé AVANT le resource pour éviter la 404)
+        Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
+        Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
+        Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
-            Route::post('mon-ecole', [EcoleController::class, 'store'])
-                ->name('ecole.store');
+        Route::post('mon-ecole', [EcoleController::class, 'store'])
+            ->name('ecole.store');
 
-            Route::get('mon-ecole', [EcoleController::class, 'show'])
-                ->name('ecole.show');
+        Route::get('mon-ecole', [EcoleController::class, 'show'])
+            ->name('ecole.show');
 
-            // IMPORT ÉLÈVES
-            Route::get('eleves/import',
-                [\App\Http\Controllers\School\StudentImportController::class, 'create'])
-                ->name('students.import.create');
+        // IMPORT ÉLÈVES
+        Route::get(
+            'eleves/import',
+            [\App\Http\Controllers\School\StudentImportController::class, 'create']
+        )
+            ->name('students.import.create');
 
-            Route::post('eleves/import/preview',
-                [\App\Http\Controllers\School\StudentImportController::class, 'preview'])
-                ->name('students.import.preview');
+        Route::post(
+            'eleves/import/preview',
+            [\App\Http\Controllers\School\StudentImportController::class, 'preview']
+        )
+            ->name('students.import.preview');
 
-            Route::post('eleves/import/store-all',
-                [\App\Http\Controllers\School\StudentImportController::class, 'storeAll'])
-                ->name('students.import.storeAll');
+        Route::post(
+            'eleves/import/store-all',
+            [\App\Http\Controllers\School\StudentImportController::class, 'storeAll']
+        )
+            ->name('students.import.storeAll');
 
 
-            // RESOURCE (En dernier)
-            Route::resource('eleves', StudentController::class)
+        // RESOURCE (En dernier)
+        Route::resource('eleves', StudentController::class)
 
-                ->parameters(['eleves' => 'eleve']) 
+            ->parameters(['eleves' => 'eleve'])
 
-                ->parameters(['eleves' => 'eleve']) // CORRECTION ICI
-                ->names('students');
+            ->parameters(['eleves' => 'eleve']) // CORRECTION ICI
+            ->names('students');
 
-            // AJAX
-            Route::get('ajax/classes', [AjaxController::class, 'classesBySection']);
-            Route::get('ajax/series', [AjaxController::class, 'seriesByClasse']);
-            Route::get('ajax/partitions', [AjaxController::class, 'partitions']);
-        });
+        // AJAX
+        Route::get('ajax/classes', [AjaxController::class, 'classesBySection']);
+        Route::get('ajax/series', [AjaxController::class, 'seriesByClasse']);
+        Route::get('ajax/partitions', [AjaxController::class, 'partitions']);
+    });
 
 
 /*
@@ -198,10 +209,10 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 Route::get('/dashboard', function () {
     $user = Auth::user();
 
-    if ($user->usertype === 'admin') { 
+    if ($user->usertype === 'admin') {
         return redirect()->route('admin.dashboard');
     }
     return redirect()->route('school.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

@@ -14,6 +14,20 @@
                     <form method="POST" action="{{ route('admin.students.store') }}" enctype="multipart/form-data">
                         @csrf
 
+                        {{-- ECOLE --}}
+                        <div class="form-group">
+                            <label class="form-label">École</label>
+                            <select name="ecole_id" class="form-input" required>
+                                <option value="">Sélectionnez une école</option>
+
+                                @foreach ($ecoles as $ecole)
+                                    <option value="{{ $ecole->id }}">
+                                        {{ $ecole->nom_ecole }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         {{-- CLASSE --}}
                         <div class="form-group">
                             <label class="form-label">Classe</label>
