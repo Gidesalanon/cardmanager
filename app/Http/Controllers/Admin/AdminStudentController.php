@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 
 class AdminStudentController extends Controller
 {
@@ -122,9 +123,9 @@ class AdminStudentController extends Controller
 
     public function update(Request $request, Eleve $eleve)
     {
-        \Log::info("=== DÉBUT UPDATE ÉLÈVE ===");
-        \Log::info("Élève ID: " . $eleve->id);
-        \Log::info("Données reçues: " . json_encode($request->all()));
+        Log::info("=== DÉBUT UPDATE ÉLÈVE ===");
+        Log::info("Élève ID: " . $eleve->id);
+        Log::info("Données reçues: " . json_encode($request->all()));
         
         $validated = $request->validate([
             'ecole_id' => 'required|exists:ecoles,id',
@@ -138,26 +139,26 @@ class AdminStudentController extends Controller
             'photo' => 'nullable|image|max:2048',
         ]);
 
-        \Log::info("Validation réussie !");
-        \Log::info("Données validées: " . json_encode($validated));
+        Log::info("Validation réussie !");
+        Log::info("Données validées: " . json_encode($validated));
 
         if ($request->hasFile('photo')) {
-            \Log::info("Photo détectée, traitement...");
+            Log::info("Photo détectée, traitement...");
             if ($eleve->photo && Storage::disk('public')->exists($eleve->photo)) {
                 Storage::disk('public')->delete($eleve->photo);
-                \Log::info("Ancienne photo supprimée: " . $eleve->photo);
+                Log::info("Ancienne photo supprimée: " . $eleve->photo);
             }
 
             $validated['photo'] = $request->file('photo')
                 ->store('eleves/photos', 'public');
-            \Log::info("Nouvelle photo enregistrée: " . $validated['photo']);
+            Log::info("Nouvelle photo enregistrée: " . $validated['photo']);
         }
 
-        \Log::info("Mise à jour de l'élève...");
+        Log::info("Mise à jour de l'élève...");
         $result = $eleve->update($validated);
-        \Log::info("Résultat update: " . ($result ? 'SUCCESS' : 'FAILED'));
+        Log::info("Résultat update: " . ($result ? 'SUCCESS' : 'FAILED'));
 
-        \Log::info("Redirection vers admin.students.index");
+        Log::info("Redirection vers admin.students.index");
         return redirect()
             ->route('admin.students.index')
             ->with('success', 'Élève modifié avec succès.');
