@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class StudentImportController extends Controller
@@ -26,7 +27,8 @@ class StudentImportController extends Controller
     }
 
    
-    public function preview(Request $request)
+
+public function preview(Request $request)
 {
     $request->validate([
         'document' => 'required|file|mimes:xlsx,xls,csv|max:10240',
@@ -34,41 +36,54 @@ class StudentImportController extends Controller
 
     $spreadsheet = IOFactory::load($request->file('document')->getPathname());
     $worksheet = $spreadsheet->getActiveSheet();
+    
+    // On utilise les index numériques pour plus de fiabilité
     $highestRow = $worksheet->getHighestRow();
-    $highestColumn = $worksheet->getHighestColumn();
+    $highestColumnLetter = $worksheet->getHighestColumn();
+    $highestColumnIndex = Coordinate::columnIndexFromString($highestColumnLetter);
 
     $images = $this->extractImagesFromExcel($worksheet);
 
-    // Mapping plus précis pour éviter les conflits entre 'nom' et 'nom_prenom'
+    // Mapping Rules
     $mappingRules = [
         'nom_prenom'  => ['nom et prenoms', 'nom & prenoms', 'nom prenoms', 'nom et prenom'],
-        'matricule'   => ['n° table', 'numero de table', 'matricule', 'numéro de table', 'n°'],
+        'matricule'   => ['n° table', 'numero de table', 'matricule', 'identifiant'],
         'sexe'        => ['sexe', 'genre', 'sex'],
         'date_lieu'   => ['date/lieu', 'date et lieu', 'date & lieu', 'date/lieu naissance'],
+        'prenom'      => ['prenom', 'prenoms', 'prénom'], // On cherche prénom AVANT nom
         'nom'         => ['nom', 'candidat'],
-        'prenom'      => ['prenom', 'prenoms', 'prénom'],
         'date_naiss'  => ['date de naissance', 'né le', 'date naiss'],
         'lieu_naiss'  => ['lieu de naissance', 'lieu naiss'],
         'telephone'   => ['telephone', 'parent', 'contact', 'tuteur', 'téléphone'],
+        'nationalite' => ['nationalité', 'nation', 'pays'],
     ];
 
     $indices = [];
     $headerRow = null;
 
+    // 1. DETECTION DE L'ENTETE
     for ($row = 1; $row <= 15; $row++) {
         $rowIndices = [];
         $matchCount = 0;
-        for ($col = 'A'; $col <= $highestColumn; $col++) {
-            $cellValue = $worksheet->getCell($col . $row)->getValue();
+        
+        for ($col = 1; $col <= $highestColumnIndex; $col++) {
+            $colLetter = Coordinate::stringFromColumnIndex($col);
+            $cellValue = $worksheet->getCell($colLetter . $row)->getValue();
             $val = strtolower(Str::ascii(trim((string)$cellValue)));
-            if (empty($val)) continue;
+            
+            if (empty($val) || $val === 'n°' || $val === 'no') continue;
 
             foreach ($mappingRules as $field => $synonyms) {
                 foreach ($synonyms as $synonym) {
-                    // Match exact ou contient (pour les noms composés)
-                    if ($val === $synonym || (strlen($val) >= 4 && str_contains($val, $synonym))) {
+                    // Match logique
+                    if ($val === $synonym || str_contains($val, $synonym)) {
+                        
+                        // --- SECURITÉ CRUCIALE ---
+                        // Si on trouve "nom" mais que c'est un "prénom", on ignore pour le champ 'nom'
+                        if ($field === 'nom' && str_contains($val, 'prenom')) continue;
+                        
                         if (!isset($rowIndices[$field])) {
-                            $rowIndices[$field] = $col;
+                            $rowIndices[$field] = $colLetter;
                             $matchCount++;
                         }
                         break;
@@ -76,7 +91,7 @@ class StudentImportController extends Controller
                 }
             }
         }
-        // On valide la ligne d'entête si on a au moins 3 colonnes clés
+
         if ($matchCount >= 3) {
             $indices = $rowIndices;
             $headerRow = $row;
@@ -84,41 +99,38 @@ class StudentImportController extends Controller
         }
     }
 
-    $students = [];
-    $startRow = ($headerRow ?? 1) + 1;
+    if (!$headerRow) {
+        return response()->json(['error' => 'Impossible de détecter les colonnes. Vérifiez les titres.'], 422);
+    }
 
-    for ($row = $startRow; $row <= $highestRow; $row++) {
+    $students = [];
+    for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
+        
         $getVal = function($field) use ($worksheet, $indices, $row) {
             return isset($indices[$field]) ? trim((string)$worksheet->getCell($indices[$field] . $row)->getValue()) : '';
         };
 
-        // --- Logique de séparation NOM / PRENOM ---
+        // NOM / PRENOM
         $nom = "";
         $prenom = "";
         
-        // On donne la priorité à la colonne combinée "Nom et Prénoms"
         if (isset($indices['nom_prenom'])) {
             $full = $getVal('nom_prenom');
-            if (!empty($full)) {
-                $parts = explode(' ', $full, 2);
-                $nom = $parts[0] ?? '';
-                $prenom = $parts[1] ?? '';
-            }
+            $parts = explode(' ', $full, 2);
+            $nom = $parts[0] ?? '';
+            $prenom = $parts[1] ?? '';
         } else {
             $nom = $getVal('nom');
             $prenom = $getVal('prenom');
         }
 
-        // Si la ligne est vide (souvent le cas en fin de tableau Excel), on ignore
         if (empty($nom) || is_numeric($nom)) continue;
 
-        // --- Logique de séparation DATE / LIEU ---
+        // DATE / LIEU
         $dateNaiss = null; 
         $lieuNaiss = "";
-
         if (isset($indices['date_lieu'])) {
             $raw = $getVal('date_lieu');
-            // Regex pour extraire JJ/MM/AAAA
             if (preg_match('/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/', $raw, $m)) {
                 $dateNaiss = $this->formatExcelDate($m[1]);
                 $lieuNaiss = trim(str_replace($m[1], '', $raw));
@@ -128,15 +140,14 @@ class StudentImportController extends Controller
             $lieuNaiss = $getVal('lieu_naiss');
         }
 
+        // SEXE
         $s = strtoupper(Str::ascii($getVal('sexe')));
         $sexe = (str_starts_with($s, 'F') || str_contains($s, 'FEM')) ? 'F' : 'M';
 
-        // --- Logique Génération Matricule ---
+        // MATRICULE
         $matricule = $getVal('matricule');
-        if (empty($matricule)) {
-            // On prend les 4 premières lettres du nom, on enlève les espaces et accents
-            $cleanNom = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', Str::ascii($nom)), 0, 3));
-            $matricule = "ID-" . $cleanNom . $row; 
+        if (empty($matricule) || strlen($matricule) < 3) {
+            $matricule = "ID-" . strtoupper(substr(Str::slug($nom), 0, 3)) . "-" . $row;
         }
 
         $students[] = [
@@ -145,12 +156,13 @@ class StudentImportController extends Controller
             'nom'              => strtoupper($nom),
             'prenom'           => ucwords(strtolower($prenom)),
             'sexe'             => $sexe,
-            'nationalite'      => 'BENIN',
+            'nationalite'      => $getVal('nationalite') ?: 'BENIN',
             'date_naissance'   => $dateNaiss,
             'lieu_naissance'   => $lieuNaiss ?: '',
             'telephone_tuteur' => $getVal('telephone') ?: '00000000',
         ];
     }
+
     return response()->json(['students' => $students]);
 }
 
