@@ -13,10 +13,34 @@
             <div class="card">
 
                 <form method="POST"
-                      action="{{ route('school.students.update',$eleve) }}"
+                      action="{{ route('admin.students.update',$eleve) }}"
                       enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
+
+                    <div class="form-group">
+                        <label class="form-label">École</label>
+                        <select name="ecole_id" class="form-input" required>
+                            @foreach($ecoles as $ecole)
+                                <option value="{{ $ecole->id }}" 
+                                    {{ $eleve->ecole_id == $ecole->id ? 'selected' : '' }}>
+                                    {{ $ecole->nom_ecole }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Classe</label>
+                        <select name="classe_id" class="form-input" required>
+                            @foreach($classes as $classe)
+                                <option value="{{ $classe->id }}" 
+                                    {{ $eleve->classe_id == $classe->id ? 'selected' : '' }}>
+                                    {{ $classe->nom }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
                     <div class="form-group">
                         <label class="form-label">Nom</label>
