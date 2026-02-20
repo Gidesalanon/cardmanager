@@ -56,12 +56,6 @@ Route::middleware('auth')->group(function () {
             Route::get('classes', [ClasseController::class, 'index'])
                 ->name('classes.index');
 
-                            /*
-            |--------------------------------------------------------------------------
-            | ADMIN - GESTION ÉLÈVES
-            |--------------------------------------------------------------------------
-            */
-
             Route::get('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'index'])
                 ->name('students.index');
 
@@ -79,13 +73,6 @@ Route::middleware('auth')->group(function () {
 
             Route::delete('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'destroy'])
                 ->name('students.destroy');
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | ADMIN - IMPORT
-            |--------------------------------------------------------------------------
-            */
 
             Route::get('eleves/import', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'create'])
                 ->name('students.import.create');
@@ -107,8 +94,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/students/export-class-cards', 
                 [AdminStudentController::class, 'exportClassCardsPdf']
             )->name('students.export.class.cards');
-
-                });
+        });
 
     /*
     |--------------------------------------------------------------------------
@@ -123,38 +109,29 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [SchoolDashboardController::class, 'index'])
                 ->name('dashboard');
 
-            // MON ECOLE
-            Route::get('mon-ecole/create', [EcoleController::class, 'create'])
-                ->name('ecole.create');
+            Route::get('mon-ecole/create', [EcoleController::class, 'create'])->name('ecole.create');
+            Route::post('mon-ecole', [EcoleController::class, 'store'])->name('ecole.store');
+            Route::get('mon-ecole', [EcoleController::class, 'show'])->name('ecole.show');
 
-            Route::post('mon-ecole', [EcoleController::class, 'store'])
-                ->name('ecole.store');
+            Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
+            Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
+            Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
-            Route::get('mon-ecole', [EcoleController::class, 'show'])
-                ->name('ecole.show');
+            Route::resource('eleves', StudentController::class)->parameters(['eleves' => 'eleve'])->names('students');
 
-            // IMPORT ÉLÈVES
-            Route::get('eleves/import',
-                [StudentImportController::class, 'create'])
-                ->name('students.import.create');
-
-            Route::post('eleves/import/preview',
-                [StudentImportController::class, 'preview'])
-                ->name('students.import.preview');
-
-            Route::post('eleves/import/store-all',
-                [StudentImportController::class, 'storeAll'])
-                ->name('students.import.storeAll');
-
-            Route::resource('eleves', StudentController::class)
-                ->parameters(['eleves' => 'eleve']) // 🔥 CORRECTION ICI
-                ->names('students');
-
-            // AJAX
             Route::get('ajax/classes', [AjaxController::class, 'classesBySection']);
             Route::get('ajax/series', [AjaxController::class, 'seriesByClasse']);
             Route::get('ajax/partitions', [AjaxController::class, 'partitions']);
         });
+
+    // --- CORRECTION DES URLS ICI ---
+    // On ajoute 'eleves/' devant pour correspondre à ton navigateur
+    Route::get('eleves/{eleve}/download-card', [StudentController::class, 'downloadCard'])
+       ->name('school.students.downloadCard');
+
+    Route::get('eleves/voir-cartes', [App\Http\Controllers\School\StudentController::class, 'viewCards'])
+        ->name('school.students.viewCards');
+
 });
 
 /*
@@ -163,14 +140,11 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('guest')->group(function () {
-    Route::get('/register', [RegisteredUserController::class, 'create'])
-        ->name('register');
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store']);
 });
 
-// GOOGLE AUTH
-Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])
-    ->name('google.login');
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.login');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 
 require __DIR__.'/auth.php';

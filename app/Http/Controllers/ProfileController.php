@@ -26,41 +26,36 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-            public function update(Request $request): RedirectResponse
+public function update(Request $request): RedirectResponse
 {
     $user = $request->user();
 
-    // Validation
+    // On valide d'abord le mot de passe actuel pour autoriser la suite
     $request->validate([
+        'current_password' => ['required', 'current_password'],
         'name' => ['required', 'string', 'max:255'],
         'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
         'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         'password' => ['nullable', 'confirmed', 'min:8'],
     ]);
 
-    // On ne change PAS le nom et l'email (même s'ils sont envoyés, on garde les anciens)
-    // Mais on doit laisser la validation passer pour que le reste s'enregistre.
-    
-    // Gestion de l'image (Avatar)
+    // Mise à jour du nom et email
+    $user->name = $request->name;
+    $user->email = $request->email;
+
+    // Gestion de la photo
     if ($request->hasFile('avatar')) {
-        // Supprimer l'ancien avatar s'il existe physiquement
-        if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-            Storage::disk('public')->delete($user->avatar);
-        }
-        
-        // Stockage du nouvel avatar
-        $path = $request->file('avatar')->store('avatars', 'public');
-        $user->avatar = $path;
+        if ($user->avatar) { Storage::disk('public')->delete($user->avatar); }
+        $user->avatar = $request->file('avatar')->store('avatars', 'public');
     }
 
-    // Gestion du mot de passe
+    // Changement de mot de passe (si rempli)
     if ($request->filled('password')) {
         $user->password = Hash::make($request->password);
     }
 
     $user->save();
 
-    // On retourne avec le status pour afficher le message vert
     return back()->with('status', 'profile-updated');
 }
 
