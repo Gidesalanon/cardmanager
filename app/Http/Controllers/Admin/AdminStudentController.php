@@ -119,6 +119,10 @@ class AdminStudentController extends Controller
 
     public function update(Request $request, Eleve $eleve)
     {
+        \Log::info("=== DÉBUT UPDATE ÉLÈVE ===");
+        \Log::info("Élève ID: " . $eleve->id);
+        \Log::info("Données reçues: " . json_encode($request->all()));
+        
         $validated = $request->validate([
             'ecole_id' => 'required|exists:ecoles,id',
             'classe_id' => 'required|exists:classes,id',
@@ -131,17 +135,26 @@ class AdminStudentController extends Controller
             'photo' => 'nullable|image|max:2048',
         ]);
 
+        \Log::info("Validation réussie !");
+        \Log::info("Données validées: " . json_encode($validated));
+
         if ($request->hasFile('photo')) {
+            \Log::info("Photo détectée, traitement...");
             if ($eleve->photo && Storage::disk('public')->exists($eleve->photo)) {
                 Storage::disk('public')->delete($eleve->photo);
+                \Log::info("Ancienne photo supprimée: " . $eleve->photo);
             }
 
             $validated['photo'] = $request->file('photo')
                 ->store('eleves/photos', 'public');
+            \Log::info("Nouvelle photo enregistrée: " . $validated['photo']);
         }
 
-        $eleve->update($validated);
+        \Log::info("Mise à jour de l'élève...");
+        $result = $eleve->update($validated);
+        \Log::info("Résultat update: " . ($result ? 'SUCCESS' : 'FAILED'));
 
+        \Log::info("Redirection vers admin.students.index");
         return redirect()
             ->route('admin.students.index')
             ->with('success', 'Élève modifié avec succès.');
