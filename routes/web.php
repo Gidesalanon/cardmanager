@@ -141,7 +141,7 @@ Route::prefix('ecole')
         Route::post('mon-ecole', [EcoleController::class, 'store'])->name('ecole.store');
         Route::get('mon-ecole', [EcoleController::class, 'show'])->name('ecole.show');
 
-        // 🔥 IMPORT ÉLÈVES (Placé AVANT le resource pour éviter la 404)
+        //IMPORT ÉLÈVES (Placé AVANT le resource pour éviter la 404)
         Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
         Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
         Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
