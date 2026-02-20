@@ -18,7 +18,7 @@ class StudentController extends Controller
         $selectedClasse = $request->classe_id ?? null;
         $activeYear = \App\Models\SchoolYear::where('is_active', 1)->first();
 
-        $query = Eleve::query();
+        $query = Eleve::query()->where('ecole_id', auth()->user()->ecole->id);
 
         if ($selectedClasse) {
             $query->where('classe_id', $selectedClasse);
@@ -48,7 +48,7 @@ class StudentController extends Controller
 
     public function create()
     {
-        $allClasses = \App\Models\Classe::orderBy('nom')->get();
+        $allClasses = Classe::orderBy('nom')->get();
 
         $classes = $allClasses
             ->groupBy(function ($classe) {

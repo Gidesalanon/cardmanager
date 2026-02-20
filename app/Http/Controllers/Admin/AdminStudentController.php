@@ -32,6 +32,7 @@ class AdminStudentController extends Controller
 
         $selectedClasse = $request->classe_id ?? null;
 
+        // Admin : voit tous les élèves de toutes les écoles
         $query = Eleve::with(['ecole', 'classe'])->orderBy('nom');
 
         if ($selectedClasse) {
@@ -49,6 +50,7 @@ class AdminStudentController extends Controller
 
     public function create()
     {
+        // Admin : voit toutes les écoles
         $ecoles = Ecole::orderBy('nom_ecole')->get();
         $classes = Classe::orderBy('nom')->get();
 
@@ -111,6 +113,7 @@ class AdminStudentController extends Controller
 
     public function edit(Eleve $eleve)
     {
+        // Admin : voit toutes les écoles
         $ecoles = Ecole::orderBy('nom_ecole')->get();
         $classes = Classe::orderBy('nom')->get();
 
