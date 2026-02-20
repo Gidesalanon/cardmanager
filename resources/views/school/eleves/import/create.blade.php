@@ -346,10 +346,12 @@ function studentImport(){
             if(!this.file){ this.notify('Choisir un fichier','error'); return; }
 
             this.loading=true;
-            this.progress=10;
+            this.progress=10
 
             const fd=new FormData();
             fd.append('document',this.file);
+
+            console.log('📤 Envoi du fichier:', this.file.name);
 
             const r=await fetch("{{ route('school.students.import.preview') }}",{
                 method:'POST',
@@ -357,10 +359,17 @@ function studentImport(){
                 body:fd
             });
 
-            this.progress=70;
+            this.progress=70
+
+            console.log('📥 Réponse brute:', r);
+            console.log('📥 Status:', r.status);
 
             const d=await r.json();
+            console.log('📥 Données JSON:', d);
+            console.log('📥 Nombre d\'étudiants reçus:', d.students?.length || 0);
+            
             this.students=d.students??[];
+            console.log('📥 Students array:', this.students);
 
             this.progress=100;
             setTimeout(()=>{ this.loading=false; this.progress=0; },500);

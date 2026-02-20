@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
+use App\Services\Import\ExcelStudentImporter;
 
 class StudentImportController extends Controller
 {
@@ -35,79 +36,47 @@ class StudentImportController extends Controller
             'document' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        // Extraire les images du fichier Excel
-        $images = $this->extractImagesFromExcel($request->file('document'));
+        try {
+            \Log::info('=== DÉBUT PREVIEW CONTROLLER ===');
+            \Log::info('Fichier reçu: ' . $request->file('document')->getClientOriginalName());
+            
+            $importer = new ExcelStudentImporter();
+            $result = $importer->import($request->file('document')->getPathname());
 
-        // Utiliser PhpSpreadsheet directement pour éviter le décalage
-        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($request->file('document')->getPathname());
-        $worksheet = $spreadsheet->getActiveSheet();
-        $highestRow = $worksheet->getHighestRow();
+            \Log::info('Résultat import: ' . json_encode([
+                'students_count' => count($result['students']),
+                'parser_type' => $result['parser_type'],
+                'header_row' => $result['header_row'],
+                'total_rows' => $result['total_rows']
+            ]));
 
-        $students = [];
-        $seenMatricules = [];
+            // Convertir les StudentData en format pour la vue
+            $students = array_map(function ($student) {
+                return $student->toArray();
+            }, $result['students']);
 
-        // Commencer à la ligne 4 (premier élève)
-        for ($row = 4; $row <= $highestRow; $row++) {
+            \Log::info('Nombre d\'étudiants convertis: ' . count($students));
 
-            $matricule = trim((string) $worksheet->getCell("C{$row}")->getValue());
-
-            if (empty($matricule) || str_contains(strtolower($matricule), 'matricule')) {
-                continue;
-            }
-
-            if (in_array($matricule, $seenMatricules)) {
-                continue;
-            }
-            $seenMatricules[] = $matricule;
-
-            // Récupérer les autres colonnes
-            $nom = trim($worksheet->getCell("D{$row}")->getValue() ?? '');
-            $prenom = trim($worksheet->getCell("E{$row}")->getValue() ?? '');
-            $rawSexe = strtoupper(trim((string)($worksheet->getCell("F{$row}")->getValue() ?? '')));
-            $nationalite = trim($worksheet->getCell("G{$row}")->getValue() ?? '');
-            $dateCell = $worksheet->getCell("H{$row}")->getValue();
-            $lieuNaissance = trim($worksheet->getCell("I{$row}")->getValue() ?? '');
-            $telephone = trim($worksheet->getCell("J{$row}")->getValue() ?? '');
-
-            // Gestion du sexe
-            $sexe = 'M';
-            if ($rawSexe === 'F' || str_contains($rawSexe, 'FEM')) {
-                $sexe = 'F';
-            }
-
-            // Gestion de la date
-            $dateNaissance = null;
-            if (!empty($dateCell)) {
-                try {
-                    if (is_numeric($dateCell)) {
-                        $dateNaissance = Carbon::instance(
-                            \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($dateCell)
-                        )->format('Y-m-d');
-                    } else {
-                        $dateNaissance = Carbon::parse($dateCell)->format('Y-m-d');
-                    }
-                } catch (\Exception $e) {
-                    $dateNaissance = null;
-                }
-            }
-
-            // Récupérer la photo par numéro de ligne exact
-            $photo = $images[$row] ?? null;
-
-            $students[] = [
-                'photo' => $photo,
-                'matricule' => $matricule,
-                'nom' => $nom,
-                'prenom' => $prenom,
-                'sexe' => $sexe,
-                'nationalite' => $nationalite,
-                'date_naissance' => $dateNaissance,
-                'lieu_naissance' => $lieuNaissance,
-                'telephone_tuteur' => $telephone,
+            $response = [
+                'students' => $students,
+                'parser_type' => class_basename($result['parser_type']),
+                'header_row' => $result['header_row'],
+                'total_rows' => $result['total_rows'],
             ];
-        }
 
-        return response()->json(['students' => $students]);
+            \Log::info('Réponse JSON: ' . json_encode($response));
+            \Log::info('=== FIN PREVIEW CONTROLLER ===');
+
+            return response()->json($response);
+
+        } catch (\Exception $e) {
+            \Log::error('ERREUR PREVIEW: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'error' => 'Erreur lors de l\'import: ' . $e->getMessage()
+            ], 422);
+        }
     }
 
     private function extractImagesFromExcel($file)
@@ -184,69 +153,62 @@ class StudentImportController extends Controller
 
         DB::transaction(function () use ($request, $ecole) {
 
-            foreach ($request->students as $index => $s) {
+            foreach ($request->students as $index => $studentData) {
 
+                // Validation des champs requis
                 if (
-                    empty($s['photo']) ||
-                    empty($s['matricule']) ||
-                    empty($s['nom']) ||
-                    empty($s['prenom']) ||
-                    empty($s['sexe']) ||
-                    empty($s['date_naissance']) ||
-                    empty($s['lieu_naissance']) ||
-                    empty($s['telephone_tuteur'])
+                    empty($studentData['matricule']) ||
+                    empty($studentData['nom']) ||
+                    empty($studentData['prenom']) ||
+                    empty($studentData['sexe']) ||
+                    empty($studentData['date_naissance']) ||
+                    empty($studentData['lieu_naissance'])
                 ) {
                     throw new \Exception("Champs manquants ligne " . ($index+1));
                 }
 
-                if (Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
+                // Vérifier si l'élève existe déjà
+                if (Eleve::where('matricule_edumaster', $studentData['matricule'])->exists()) {
                     continue;
                 }
 
+                // Gestion de la photo
                 $photoPath = null;
-
-                if (preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
-
-                    $data = substr($s['photo'], strpos($s['photo'], ',') + 1);
+                if (!empty($studentData['photo']) && preg_match('/^data:image\/(\w+);base64,/', $studentData['photo'], $type)) {
+                    $data = substr($studentData['photo'], strpos($studentData['photo'], ',') + 1);
                     $data = base64_decode($data);
-
                     $extension = strtolower($type[1]);
                     $fileName = uniqid('eleve_').'.'.$extension;
-
                     $photoPath = 'eleves/photos/'.$fileName;
-
                     Storage::disk('public')->put($photoPath, $data);
                 }
 
-                $matricule = $s['matricule'];
-
+                // Génération du QR code
+                $matricule = $studentData['matricule'];
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($matricule) . '.png';
                 $qrCodeFullPath = storage_path('app/public/' . $qrCodePath);
-
-                //  créer le dossier si inexistant
+                
                 $directory = dirname($qrCodeFullPath);
-
                 if (!file_exists($directory)) {
                     mkdir($directory, 0755, true);
                 }
 
                 $qrCode = new \Endroid\QrCode\QrCode($matricule);
                 $writer = new \Endroid\QrCode\Writer\PngWriter();
-
                 $result = $writer->write($qrCode);
-
                 $result->saveToFile($qrCodeFullPath);
 
+                // Création de l'élève
                 Eleve::create([
                     'ecole_id' => $ecole->id,
                     'classe_id' => $request->classe_id,
-                    'nom' => $s['nom'],
-                    'prenom' => $s['prenom'],
-                    'sexe' => $s['sexe'],
-                    'nationalite' => $s['nationalite'] ?? null,
-                    'date_naissance' => $s['date_naissance'],
-                    'lieu_naissance' => $s['lieu_naissance'],
-                    'telephone_tuteur' => $s['telephone_tuteur'],
+                    'nom' => $studentData['nom'],
+                    'prenom' => $studentData['prenom'],
+                    'sexe' => $studentData['sexe'],
+                    'nationalite' => $studentData['nationalite'] ?? null,
+                    'date_naissance' => $studentData['date_naissance'],
+                    'lieu_naissance' => $studentData['lieu_naissance'],
+                    'telephone_tuteur' => $studentData['telephone_tuteur'] ?? null,
                     'photo' => $photoPath,
                     'matricule_edumaster' => $matricule,
                     'qr_code' => $qrCodePath,
