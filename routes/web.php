@@ -62,27 +62,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])->name('students.import.preview');
             Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
-            Route::get('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'index'])
-                ->name('students.index');
+            /* ADMIN - GESTION ÉLÈVES */
+            Route::resource('eleves', AdminStudentController::class)
+                ->parameters(['eleves' => 'eleve'])
+                ->names('students');
 
-            Route::get('eleves/create', [\App\Http\Controllers\Admin\AdminStudentController::class, 'create'])
-                ->name('students.create');
 
-            Route::post('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'store'])
-                ->name('students.store');
-
-            Route::get('eleves/{eleve}/edit', [\App\Http\Controllers\Admin\AdminStudentController::class, 'edit'])
-                ->name('students.edit');
-
-            Route::put('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'update'])
-                ->name('students.update');
-
-            Route::delete('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'destroy'])
-                ->name('students.destroy');
-
-            Route::get('eleves/import', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'create'])
-                ->name('students.import.create');
+            Route::get('/students/{eleve}/export-card-pdf', [AdminStudentController::class, 'exportCardPdf'])->name('students.export.card.pdf');
+            Route::get('/students/{eleve}/export-card-image', [AdminStudentController::class, 'exportCardImage'])->name('students.export.card.image');
+            Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])->name('students.export.class.cards');
         });
+
+    // Route::get('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'index'])
+    //     ->name('students.index');
+
+    // Route::get('eleves/create', [\App\Http\Controllers\Admin\AdminStudentController::class, 'create'])
+    //     ->name('students.create');
+
+    // Route::post('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'store'])
+    //     ->name('students.store');
+
+    // Route::get('eleves/{eleve}/edit', [\App\Http\Controllers\Admin\AdminStudentController::class, 'edit'])
+    //     ->name('students.edit');
+
+    // Route::put('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'update'])
+    //     ->name('students.update');
+
+    // Route::delete('eleves/{eleve}', [\App\Http\Controllers\Admin\AdminStudentController::class, 'destroy'])
+    //     ->name('students.destroy');
+
+
+    /*
+            |--------------------------------------------------------------------------
+            | ADMIN - IMPORT
+            |--------------------------------------------------------------------------
+            */
+
+    Route::get('eleves/import', [\App\Http\Controllers\AdminStudentImportController::class, 'create'])
+        ->name('students.import.create');
 
     Route::post('eleves/import/preview', [\App\Http\Controllers\AdminStudentImportController::class, 'preview'])
         ->name('students.import.preview');
@@ -197,3 +214,5 @@ Route::get('/dashboard', function () {
     }
     return redirect()->route('school.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+require __DIR__ . '/auth.php';
