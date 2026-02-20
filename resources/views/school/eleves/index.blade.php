@@ -3,6 +3,7 @@
 @section('content')
 
 <style>
+/* Style des boutons circulaires */
 .circle-btn{
     width:35px;
     height:35px;
@@ -14,37 +15,22 @@
     cursor:pointer;
     font-size:14px;
     color:#fff;
+    transition: transform 0.2s;
 }
+.circle-btn:hover { transform: scale(1.1); }
 .circle-edit{ background:#f59e0b; }
-.circle-edit:hover{ background:#d97706; }
-
 .circle-delete{ background:#dc2626; }
-.circle-delete:hover{ background:#b91c1c; }
 
-.toast{
-    position:fixed;
-    top:20px;
-    right:20px;
-    padding:12px 18px;
-    border-radius:6px;
-    font-size:14px;
-    color:#fff;
-    z-index:9999;
+/* Correction pour alignement des boutons dans la cellule */
+.actions-cell {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+    align-items: center;
 }
-.toast.success{ background:#16a34a; }
-.toast.error{ background:#dc2626; }
 </style>
 
-<div x-data="studentIndex()" x-init="init()" class="card">
-
-    {{-- TOAST --}}
-    <div x-show="toast.show"
-         x-transition
-         class="toast"
-         :class="toast.type"
-         x-text="toast.message">
-    </div>
-
+<div class="card">
     <div class="card-header">
         <div>
             <h3 class="card-title">Élèves</h3>
@@ -57,6 +43,7 @@
         </a>
     </div>
 
+    {{-- Filtres par classe --}}
     <div style="padding:15px; border-bottom:1px solid #eee;">
         <a href="{{ route('school.students.index') }}"
            class="btn {{ !$selectedClasse ? 'btn-primary' : 'btn-light' }}">
@@ -86,10 +73,8 @@
                 </tr>
             </thead>
             <tbody>
-
                 @forelse($eleves as $eleve)
                     <tr>
-
                         <td>
                             @if($eleve->photo)
                                 <img src="{{ asset('storage/'.$eleve->photo) }}"
@@ -112,30 +97,31 @@
                         </td>
                         <td>{{ $eleve->telephone_tuteur }}</td>
 
-                        <td style="display:flex; gap:8px;">
-
-                            <a href="{{ route('school.students.edit',$eleve) }}"
+                        <td class="actions-cell">
+                            <a href="{{ route('school.students.edit', $eleve) }}"
                                class="circle-btn circle-edit"
                                title="Modifier">
                                 ✏
                             </a>
 
-                            <form action="{{ route('school.students.destroy',$eleve) }}"
-                                  method="POST"
-                                  @submit.prevent="confirmDelete($event)">
+                            {{-- Formulaire de suppression avec ID unique --}}
+                            <form id="delete-form-{{ $eleve->id }}" 
+                                  action="{{ route('school.students.destroy', $eleve) }}"
+                                  method="POST" 
+                                  style="display:none;">
                                 @csrf
                                 @method('DELETE')
-
-                                <button type="submit"
-                                        class="circle-btn circle-delete"
-                                        title="Supprimer">
-                                    🗑
-                                </button>
                             </form>
 
+                            {{-- Bouton déclencheur SweetAlert --}}
+                            <button type="button" 
+                                    onclick="confirmDelete({{ $eleve->id }}, '{{ addslashes($eleve->nom . ' ' . $eleve->prenom) }}')"
+                                    class="circle-btn circle-delete"
+                                    title="Supprimer">
+                                🗑
+                            </button>
                         </td>
                     </tr>
-
                 @empty
                     <tr>
                         <td colspan="8" style="text-align:center;">
@@ -143,42 +129,62 @@
                         </td>
                     </tr>
                 @endforelse
-
             </tbody>
         </table>
     </div>
 </div>
 
-<script>
-function studentIndex(){
-    return{
-
-        toast:{show:false,message:'',type:'success'},
-
-        notify(msg,type='success'){
-            this.toast.message=msg;
-            this.toast.type=type;
-            this.toast.show=true;
-            setTimeout(()=>this.toast.show=false,4000);
-        },
-
-        confirmDelete(e){
-            if(confirm('Voulez-vous vraiment supprimer cet élève ?')){
-                e.target.closest('form').submit();
-            }
-        },
-
-        init(){
-            @if(session('success'))
-                this.notify("{{ session('success') }}",'success');
-            @endif
-
-            @if(session('error'))
-                this.notify("{{ session('error') }}",'error');
-            @endif
-        }
-    }
-}
-</script>
-
 @endsection
+
+@push('scripts')
+<script>
+    /**
+     * Confirmation de suppression avec SweetAlert2
+     */
+    function confirmDelete(id, name) {
+        Swal.fire({
+            title: 'Supprimer l\'élève ?',
+            text: "Êtes-vous sûr de vouloir supprimer " + name + " ? Cette action est irréversible.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626', // Rouge
+            cancelButtonColor: '#6b7280',  // Gris
+            confirmButtonText: 'Oui, supprimer !',
+            cancelButtonText: 'Annuler',
+            reverseButtons: true, // Place "Annuler" à gauche
+            focusCancel: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Soumission du formulaire correspondant
+                document.getElementById('delete-form-' + id).submit();
+            }
+        });
+    }
+
+    /**
+     * Gestion des notifications Flash (Succès / Erreur)
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Opération réussie',
+                text: "{{ session('success') }}",
+                timer: 3000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Erreur',
+                text: "{{ session('error') }}",
+                confirmButtonColor: '#dc2626'
+            });
+        @endif
+    });
+</script>
+@endpush
