@@ -30,12 +30,20 @@
     <p class="login-subtitle">Accédez à votre espace</p>
 </div>
 
+            {{-- MESSAGE DE SUCCÈS (Vérification email) --}}
+            @if (session('status'))
+                <div class="alert alert-success" style="background-color: #d4edda; color: #155724; border-color: #c3e6cb; padding: 0.75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem;">
+                    {{ session('status') }}
+                </div>
+            @endif
+
             {{-- ERREURS --}}
             @if ($errors->any())
                 <div class="alert alert-danger">
                     {{ $errors->first() }}
                 </div>
             @endif
+            
 
             <form method="POST" action="{{ route('login') }}" class="login-form">
                 @csrf

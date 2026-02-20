@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Eleve;
+use App\Models\Classe;
 
 class EleveController extends Controller
 {
@@ -43,4 +45,3 @@ class EleveController extends Controller
             ->with('success', 'Élève enregistré');
     }
 }
-

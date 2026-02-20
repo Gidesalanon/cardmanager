@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -13,22 +14,27 @@ use App\Http\Controllers\School\StudentController;
 use App\Http\Controllers\School\StudentImportController;
 use App\Http\Controllers\School\AjaxController;
 use App\Http\Controllers\Admin\AdminStudentController;
+use App\Http\Controllers\Admin\AdminStudentImportController;
 
 /*
 |--------------------------------------------------------------------------
 | ACCUEIL
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+Route::get('test-import', function () {
+    return "La route fonctionne !";
+});
 /*
 |--------------------------------------------------------------------------
-| AUTHENTIFIÉS
+| AUTHENTIFIÉS (DOIVENT ÊTRE VÉRIFIÉS)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
 
     // PROFIL
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -45,16 +51,16 @@ Route::middleware('auth')->group(function () {
         ->name('admin.')
         ->group(function () {
 
-            Route::get('/', [AdminDashboardController::class, 'index'])
-                ->name('dashboard');
+            Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
             Route::resource('school-years', SchoolYearController::class);
-            Route::post('school-years/{schoolYear}/toggle',
-                [SchoolYearController::class, 'toggle'])
-                ->name('school-years.toggle');
+            Route::post('school-years/{schoolYear}/toggle', [SchoolYearController::class, 'toggle'])->name('school-years.toggle');
+            Route::get('classes', [ClasseController::class, 'index'])->name('classes.index');
 
-            Route::get('classes', [ClasseController::class, 'index'])
-                ->name('classes.index');
+            /* ADMIN - IMPORT ÉLÈVES (Placé avant le resource) */
+            Route::get('eleves/import', [AdminStudentImportController::class, 'create'])->name('students.import.create');
+            Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])->name('students.import.preview');
+            Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
             Route::get('eleves', [\App\Http\Controllers\Admin\AdminStudentController::class, 'index'])
                 ->name('students.index');
@@ -77,62 +83,91 @@ Route::middleware('auth')->group(function () {
             Route::get('eleves/import', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'create'])
                 ->name('students.import.create');
 
-            Route::post('eleves/import/preview', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'preview'])
-                ->name('students.import.preview');
+    Route::post('eleves/import/preview', [\App\Http\Controllers\AdminStudentImportController::class, 'preview'])
+        ->name('students.import.preview');
 
-            Route::post('eleves/import/store-all', [\App\Http\Controllers\Admin\AdminStudentImportController::class, 'storeAll'])
-                ->name('students.import.storeAll');
- 
-            Route::get('/students/{eleve}/export-card-pdf', 
-                [AdminStudentController::class, 'exportCardPdf']
-            )->name('students.export.card.pdf');
+    Route::post('eleves/import/store-all', [\App\Http\Controllers\AdminStudentImportController::class, 'storeAll'])
+        ->name('students.import.storeAll');
 
-            Route::get('/students/{eleve}/export-card-image', 
-                [AdminStudentController::class, 'exportCardImage']
-            )->name('students.export.card.image');
+    Route::get(
+        '/students/{eleve}/export-card-pdf',
+        [AdminStudentController::class, 'exportCardPdf']
+    )->name('students.export.card.pdf');
 
-            Route::get('/students/export-class-cards', 
-                [AdminStudentController::class, 'exportClassCardsPdf']
-            )->name('students.export.class.cards');
-        });
+    Route::get(
+        '/students/{eleve}/export-card-image',
+        [AdminStudentController::class, 'exportCardImage']
+    )->name('students.export.card.image');
 
-    /*
+    Route::get(
+        '/students/export-class-cards',
+        [AdminStudentController::class, 'exportClassCardsPdf']
+    )->name('students.export.class.cards');
+});
+
+
+/*
     |--------------------------------------------------------------------------
     | ECOLE
     |--------------------------------------------------------------------------
     */
-    Route::prefix('ecole')
-        ->middleware(['ecole'])
-        ->name('school.')
-        ->group(function () {
+Route::prefix('ecole')
+    ->middleware(['ecole'])
+    ->name('school.')
+    ->group(function () {
 
-            Route::get('/', [SchoolDashboardController::class, 'index'])
-                ->name('dashboard');
+        Route::get('/', [SchoolDashboardController::class, 'index'])->name('dashboard');
 
-            Route::get('mon-ecole/create', [EcoleController::class, 'create'])->name('ecole.create');
-            Route::post('mon-ecole', [EcoleController::class, 'store'])->name('ecole.store');
-            Route::get('mon-ecole', [EcoleController::class, 'show'])->name('ecole.show');
+        // MON ECOLE
+        Route::get('mon-ecole/create', [EcoleController::class, 'create'])->name('ecole.create');
+        Route::post('mon-ecole', [EcoleController::class, 'store'])->name('ecole.store');
+        Route::get('mon-ecole', [EcoleController::class, 'show'])->name('ecole.show');
 
-            Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
-            Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
-            Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
+        // 🔥 IMPORT ÉLÈVES (Placé AVANT le resource pour éviter la 404)
+        Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
+        Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
+        Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
-            Route::resource('eleves', StudentController::class)->parameters(['eleves' => 'eleve'])->names('students');
+        Route::post('mon-ecole', [EcoleController::class, 'store'])
+            ->name('ecole.store');
 
-            Route::get('ajax/classes', [AjaxController::class, 'classesBySection']);
-            Route::get('ajax/series', [AjaxController::class, 'seriesByClasse']);
-            Route::get('ajax/partitions', [AjaxController::class, 'partitions']);
-        });
+        Route::get('mon-ecole', [EcoleController::class, 'show'])
+            ->name('ecole.show');
 
-    // --- CORRECTION DES URLS ICI ---
-    // On ajoute 'eleves/' devant pour correspondre à ton navigateur
-    Route::get('eleves/{eleve}/download-card', [StudentController::class, 'downloadCard'])
-       ->name('school.students.downloadCard');
+        // IMPORT ÉLÈVES
+        Route::get(
+            'eleves/import',
+            [\App\Http\Controllers\School\StudentImportController::class, 'create']
+        )
+            ->name('students.import.create');
 
-    Route::get('eleves/voir-cartes', [App\Http\Controllers\School\StudentController::class, 'viewCards'])
-        ->name('school.students.viewCards');
+        Route::post(
+            'eleves/import/preview',
+            [\App\Http\Controllers\School\StudentImportController::class, 'preview']
+        )
+            ->name('students.import.preview');
 
-});
+        Route::post(
+            'eleves/import/store-all',
+            [\App\Http\Controllers\School\StudentImportController::class, 'storeAll']
+        )
+            ->name('students.import.storeAll');
+
+
+        // RESOURCE (En dernier)
+        Route::resource('eleves', StudentController::class)
+
+            ->parameters(['eleves' => 'eleve'])
+
+            ->parameters(['eleves' => 'eleve']) // CORRECTION ICI
+            ->names('students');
+
+        // AJAX
+        Route::get('ajax/classes', [AjaxController::class, 'classesBySection']);
+        Route::get('ajax/series', [AjaxController::class, 'seriesByClasse']);
+        Route::get('ajax/partitions', [AjaxController::class, 'partitions']);
+    });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -144,7 +179,22 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegisteredUserController::class, 'store']);
 });
 
+// GOOGLE AUTH
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.login');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 
-require __DIR__.'/auth.php';
+/*
+|--------------------------------------------------------------------------
+| REDIRECTION APRÈS CONNEXION / VÉRIFICATION
+|--------------------------------------------------------------------------
+*/
+Route::get('/dashboard', function () {
+    $user = Auth::user();
+
+    if ($user->usertype === 'admin') {
+        return redirect()->route('admin.dashboard');
+    }
+    return redirect()->route('school.dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+require __DIR__ . '/auth.php';
