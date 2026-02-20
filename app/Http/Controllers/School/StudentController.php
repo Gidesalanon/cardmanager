@@ -13,12 +13,58 @@ use Endroid\QrCode\Writer\PngWriter;
 
 class StudentController extends Controller
 {
+    // public function index(Request $request)
+    // {
+    //     $selectedClasse = $request->classe_id ?? null;
+    //     $activeYear = \App\Models\SchoolYear::where('is_active', 1)->first();
+
+    //     $query = Eleve::query()->where('ecole_id', auth()->user()->ecole->id);
+
+    //     if ($selectedClasse) {
+    //         $query->where('classe_id', $selectedClasse);
+    //     }
+
+    //     $eleves = $query->orderBy('nom')->get();
+
+    //     $allClasses = Classe::orderBy('nom')->get();
+
+    //     $classes = $allClasses
+    //         ->groupBy(function ($classe) {
+    //             if (preg_match('/(2nde|1ère|Tle)/i', $classe->nom)) {
+    //                 return $classe->nom;
+    //             }
+    //             return preg_replace('/\s+.*/', '', $classe->nom);
+    //         })
+    //         ->map(fn($group) => $group->first())
+    //         ->values();
+
+    //     return view('school.eleves.index', compact(
+    //         'eleves',
+    //         'classes',
+    //         'selectedClasse',
+    //         'activeYear'
+    //     ));
+    // }
+
     public function index(Request $request)
     {
         $selectedClasse = $request->classe_id ?? null;
         $activeYear = \App\Models\SchoolYear::where('is_active', 1)->first();
 
-        $query = Eleve::query()->where('ecole_id', auth()->user()->ecole->id);
+        $user = auth()->user();
+        $ecoleId = optional($user->ecole)->id;
+
+        // Si pas d'école → liste vide
+        if (!$ecoleId) {
+            return view('school.eleves.index', [
+                'eleves' => collect(), // collection vide
+                'classes' => collect(),
+                'selectedClasse' => $selectedClasse,
+                'activeYear' => $activeYear
+            ]);
+        }
+
+        $query = Eleve::query()->where('ecole_id', $ecoleId);
 
         if ($selectedClasse) {
             $query->where('classe_id', $selectedClasse);
@@ -44,7 +90,7 @@ class StudentController extends Controller
             'selectedClasse',
             'activeYear'
         ));
-    }
+    } //end index
 
     public function create()
     {
