@@ -128,7 +128,7 @@ class ExcelStudentImporter
                                 $images[$rowNumber] = 'data:' . $mimeType . ';base64,' . base64_encode($imageContents);
                             }
                         } catch (\Exception $e) {
-                            // Erreur silencieuse
+                            
                         }
                     } elseif (file_exists($imagePath)) {
                         $imageContents = file_get_contents($imagePath);
@@ -138,7 +138,7 @@ class ExcelStudentImporter
                 }
             }
         } catch (\Exception $e) {
-            // Erreur silencieuse
+           
         }
 
         return $images;

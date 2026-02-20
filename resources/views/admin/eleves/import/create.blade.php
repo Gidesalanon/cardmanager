@@ -393,16 +393,16 @@ function studentImport(){
 
             for(let i=0;i<this.students.length;i++){
                 let s=this.students[i];
-                if(!s.photo || !s.matricule || !s.nom || !s.prenom ||
-                   !s.sexe || !s.date_naissance || !s.lieu_naissance || !s.telephone_tuteur){
+                if(s.photo === undefined || s.matricule === undefined || s.nom === undefined || s.prenom === undefined ||
+                   s.sexe === undefined || s.date_naissance === undefined || s.lieu_naissance === undefined){
                     this.notify('Tous les champs sont obligatoires (ligne '+(i+1)+')','error');
                     return false;
                 }
             }
 
             // Vérifie doublons de matricule
-            let matricules = this.students.map(s => s.matricule.trim());
-            let duplicates = matricules.filter((item, index) => matricules.indexOf(item) !== index);
+            let matricules = this.students.map(s => s.matricule ? s.matricule.trim() : '');
+            let duplicates = matricules.filter((item, index) => matricules.indexOf(item) !== index && item !== '');
             if(duplicates.length){
                 this.notify('Doublon de matricule détecté','error');
                 return false;

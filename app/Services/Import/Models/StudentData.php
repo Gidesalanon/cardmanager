@@ -21,7 +21,7 @@ class StudentData
     public ?string $eps = null,
     public ?string $observation = null,
     public ?array $collegesChoisis = null,
-    public ?string $telephoneTuteur = null, //
+    public ?string $telephoneTuteur = null, 
 ) {}
 
 
@@ -58,7 +58,7 @@ class StudentData
             'sexe' => $this->sexe,
             'date_naissance' => $this->dateNaissance,
             'lieu_naissance' => $this->lieuNaissance,
-            'telephone_tuteur' => null, // À adapter selon le modèle
+            'telephone_tuteur' => null, 
         ];
     }
 }

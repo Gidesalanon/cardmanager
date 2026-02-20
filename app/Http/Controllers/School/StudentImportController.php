@@ -156,15 +156,20 @@ class StudentImportController extends Controller
             foreach ($request->students as $index => $studentData) {
 
                 // Validation des champs requis
-                if (
-                    empty($studentData['matricule']) ||
-                    empty($studentData['nom']) ||
-                    empty($studentData['prenom']) ||
-                    empty($studentData['sexe']) ||
-                    empty($studentData['date_naissance']) ||
-                    empty($studentData['lieu_naissance'])
-                ) {
-                    throw new \Exception("Champs manquants ligne " . ($index+1));
+                \Log::info('Validation élève ligne ' . ($index+1) . ': ' . json_encode($studentData));
+                
+                $requiredFields = ['matricule', 'nom', 'prenom', 'sexe', 'date_naissance', 'lieu_naissance'];
+                $missingFields = [];
+                
+                foreach ($requiredFields as $field) {
+                    if (!array_key_exists($field, $studentData)) {
+                        $missingFields[] = $field;
+                    }
+                }
+                
+                if (!empty($missingFields)) {
+                    \Log::error('Champs manquants ligne ' . ($index+1) . ': ' . implode(', ', $missingFields));
+                    throw new \Exception("Champs manquants ligne " . ($index+1) . ": " . implode(', ', $missingFields));
                 }
 
                 // Vérifier si l'élève existe déjà
@@ -185,6 +190,12 @@ class StudentImportController extends Controller
 
                 // Génération du QR code
                 $matricule = $studentData['matricule'];
+                
+                // Vérifier si le matricule est valide pour le QR code
+                if (empty($matricule)) {
+                    $matricule = 'MATRICULE_' . uniqid(); // Générer un matricule par défaut
+                }
+                
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($matricule) . '.png';
                 $qrCodeFullPath = storage_path('app/public/' . $qrCodePath);
                 
