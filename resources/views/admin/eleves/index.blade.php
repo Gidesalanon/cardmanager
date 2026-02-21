@@ -14,61 +14,27 @@
     cursor:pointer;
     font-size:14px;
     color:#fff;
+    transition: transform 0.2s;
 }
+.circle-btn:hover { transform: scale(1.1); }
 .circle-edit{ background:#f59e0b; }
-.circle-edit:hover{ background:#d97706; }
-
 .circle-delete{ background:#dc2626; }
-.circle-delete:hover{ background:#b91c1c; }
-
-.toast{
-    position:fixed;
-    top:20px;
-    right:20px;
-    padding:12px 18px;
-    border-radius:6px;
-    font-size:14px;
-    color:#fff;
-    z-index:9999;
-}
-.toast.success{ background:#16a34a; }
-.toast.error{ background:#dc2626; }
 </style>
 
-<div x-data="studentIndex()" x-init="init()" class="card">
-
-    {{-- TOAST --}}
-    <div x-show="toast.show"
-         x-transition
-         class="toast"
-         :class="toast.type"
-         x-text="toast.message">
-    </div>
-
+<div class="card">
     <div class="card-header">
         <div>
             <h3 class="card-title">Élèves</h3>
-            <p class="card-subtitle">
-                Gestion des élèves - Année scolaire {{ $activeYear->label ?? '' }}
-            </p>
+            <p class="card-subtitle">Gestion des élèves - Année scolaire {{ $activeYear->label ?? '' }}</p>
         </div>
-        <a href="{{ route('admin.students.create') }}" class="btn btn-primary">
-            Nouvel élève
-        </a>
-
+        <a href="{{ route('admin.students.create') }}" class="btn btn-primary">Nouvel élève</a>
     </div>
 
+    {{-- Filtres classes --}}
     <div style="padding:15px; border-bottom:1px solid #eee;">
-        <a href="{{ route('admin.students.index') }}"
-           class="btn {{ !$selectedClasse ? 'btn-primary' : 'btn-light' }}">
-            Toutes les classes
-        </a>
-
+        <a href="{{ route('admin.students.index') }}" class="btn {{ !$selectedClasse ? 'btn-primary' : 'btn-light' }}">Toutes les classes</a>
         @foreach($classes as $classe)
-            <a href="{{ route('admin.students.index', ['classe_id' => $classe->id]) }}"
-               class="btn {{ $selectedClasse == $classe->id ? 'btn-primary' : 'btn-light' }}">
-                {{ $classe->nom }}
-            </a>
+            <a href="{{ route('admin.students.index', ['classe_id' => $classe->id]) }}" class="btn {{ $selectedClasse == $classe->id ? 'btn-primary' : 'btn-light' }}">{{ $classe->nom }}</a>
         @endforeach
     </div>
 
@@ -87,114 +53,91 @@
                 </tr>
             </thead>
             <tbody>
-
                 @forelse($eleves as $eleve)
                     <tr>
-
                         <td>
                             @if($eleve->photo)
-                                <img src="{{ asset('storage/'.$eleve->photo) }}"
-                                     width="40"
-                                     height="40"
-                                     style="object-fit:cover;border-radius:4px;">
-                            @else
-                                -
-                            @endif
+                                <img src="{{ asset('storage/'.$eleve->photo) }}" width="40" height="40" style="object-fit:cover;border-radius:4px;">
+                            @else - @endif
                         </td>
-
                         <td>{{ $eleve->matricule_edumaster }}</td>
                         <td>{{ $eleve->nom }}</td>
                         <td>{{ $eleve->prenom }}</td>
                         <td>{{ $eleve->sexe }}</td>
-                        <td>
-                            {{ $eleve->date_naissance 
-                                ? \Carbon\Carbon::parse($eleve->date_naissance)->format('d/m/Y') 
-                                : '-' }}
-                        </td>
+                        <td>{{ $eleve->date_naissance ? \Carbon\Carbon::parse($eleve->date_naissance)->format('d/m/Y') : '-' }}</td>
                         <td>{{ $eleve->telephone_tuteur }}</td>
 
                         <td style="display:flex; gap:8px;">
+                            <a href="{{ route('admin.students.edit',$eleve) }}" class="circle-btn circle-edit" title="Modifier">✏</a>
 
-                            <a href="{{ route('admin.students.edit',$eleve) }}"
-                               class="circle-btn circle-edit"
-                               title="Modifier">
-                                ✏
-                            </a>
-
-                            <form action="{{ route('admin.students.destroy',$eleve) }}"
-                                  method="POST"
-                                  @submit.prevent="confirmDelete($event)">
+                            {{-- Formulaire avec ID unique --}}
+                            <form id="delete-form-{{ $eleve->id }}" action="{{ route('admin.students.destroy',$eleve) }}" method="POST" style="display:none;">
                                 @csrf
                                 @method('DELETE')
-
-                                <button type="submit"
-                                        class="circle-btn circle-delete"
-                                        title="Supprimer">
-                                    🗑
-                                </button>
                             </form>
 
-                            <a href="{{ route('admin.students.export.card.pdf',$eleve) }}"
-                                class="circle-btn"
-                                style="background:#2563eb;"
-                                title="Exporter PDF">
-                                📄
-                            </a>
+                            {{-- Bouton appelant la fonction SweetAlert --}}
+                            <button type="button" 
+                                    onclick="confirmDelete({{ $eleve->id }}, '{{ addslashes($eleve->nom . ' ' . $eleve->prenom) }}')" 
+                                    class="circle-btn circle-delete" 
+                                    title="Supprimer">
+                                🗑
+                            </button>
 
-                            <a href="{{ route('admin.students.export.card.image',$eleve) }}"
-                                class="circle-btn"
-                                style="background:#059669;"
-                                title="Exporter Image">
-                                🖼
-                            </a>
-
-
+                            <a href="{{ route('admin.students.export.card.pdf',$eleve) }}" class="circle-btn" style="background:#2563eb;" title="Exporter PDF">📄</a>
+                            <a href="{{ route('admin.students.export.card.image',$eleve) }}" class="circle-btn" style="background:#059669;" title="Exporter Image">🖼</a>
                         </td>
                     </tr>
-
                 @empty
-                    <tr>
-                        <td colspan="8" style="text-align:center;">
-                            Aucun élève trouvé.
-                        </td>
-                    </tr>
+                    <tr><td colspan="8" style="text-align:center;">Aucun élève trouvé.</td></tr>
                 @endforelse
-
             </tbody>
         </table>
     </div>
 </div>
 
-<script>
-function studentIndex(){
-    return{
-
-        toast:{show:false,message:'',type:'success'},
-
-        notify(msg,type='success'){
-            this.toast.message=msg;
-            this.toast.type=type;
-            this.toast.show=true;
-            setTimeout(()=>this.toast.show=false,4000);
-        },
-
-        confirmDelete(e){
-            if(confirm('Voulez-vous vraiment supprimer cet élève ?')){
-                e.target.closest('form').submit();
-            }
-        },
-
-        init(){
-            @if(session('success'))
-                this.notify("{{ session('success') }}",'success');
-            @endif
-
-            @if(session('error'))
-                this.notify("{{ session('error') }}",'error');
-            @endif
-        }
-    }
-}
-</script>
-
 @endsection
+
+@push('scripts')
+<script>
+    // 1. Fonction de suppression
+    function confirmDelete(id, name) {
+        Swal.fire({
+            title: 'Êtes-vous sûr ?',
+            text: "Vous allez supprimer l'élève " + name + ". Cette action est irréversible !",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626', // Rouge (delete)
+            cancelButtonColor: '#6b7280', // Gris (cancel)
+            confirmButtonText: 'Oui, supprimer !',
+            cancelButtonText: 'Annuler',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('delete-form-' + id).submit();
+            }
+        })
+    }
+
+    // 2. Gestion des messages Flash (Success/Error) avec SweetAlert
+    document.addEventListener('DOMContentLoaded', function() {
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Succès !',
+                text: "{{ session('success') }}",
+                timer: 3000,
+                showConfirmButton: false
+            });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Erreur',
+                text: "{{ session('error') }}",
+            });
+        @endif
+    });
+</script>
+@endpush

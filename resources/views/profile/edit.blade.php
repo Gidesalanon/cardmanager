@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.ecole')
 
 @section('content')
 <div class="profile-modern-page">
