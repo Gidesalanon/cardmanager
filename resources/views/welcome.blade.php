@@ -100,7 +100,7 @@ $(function () {
 
           @auth
             @if(auth()->user()->role === 'admin')
-              <li><a href="{{ route('admin.dashboard') }}">Dashboard admin</a></li>
+              {{-- <li><a href="{{ route('admin.dashboard') }}">Dashboard admin</a></li> --}}
             @elseif(auth()->user()->role === 'ecole')
               <li><a href="{{ route('school.dashboard') }}">Mon espace</a></li>
             @endif

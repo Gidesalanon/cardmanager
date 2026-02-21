@@ -40,16 +40,19 @@
             width: 25mm;
         }
         .school-top-name { font-size: 6.5pt; font-weight: 900; }
-        .school-top-tel { font-size: 5pt; color: #333; }
+        .school-top-tel { font-size: 5pt; color: #333; margin-top: 2px}
         .table-box {
             position: absolute;
             top: 7mm;
             right: 2mm;
-            border: 0.25mm solid #000;
+            border: 0.15mm solid #000;
             padding: 0.5mm 1.5mm;
             text-align: center;
         }
-        .table-label { font-size: 5.5pt; font-weight: bold; }
+        .table-label {
+            min-width: 70px;
+            min-height: 7px
+        }
         /* Titre Modifié : Taille réduite et nom changé */
         .card-title {
             position: absolute;
@@ -81,7 +84,8 @@
             padding-bottom: 0.6mm;
             vertical-align: top;
         }
-        .label { font-weight: bold; width: 16mm; }
+        .label { font-weight: bold; width: 16mm; font-size: 10px }
+        .label-sign { font-weight: bold; width: 90mm; font-size: 8px }
         .sig-apprenant-box {
             position: absolute;
             bottom: 6mm;
@@ -102,55 +106,50 @@
         }
         /* --- ÉLÉMENTS DU VERSO --- */
         .verso-photo {
-    width: 85.6mm;
+            width: 85.6mm;
             height: 54mm;
             position: relative;
             overflow: hidden;
             background-color: white;
+            /* padding: 3px; */
 }
 
 /* Nom école */
 .school-name {
     text-align: center;
-    font-size: 18px;
+    font-size: 10px;
     font-weight: 600;
     color: #020202;
     letter-spacing: 1px;
+    padding-top: 10px;
 }
 
 /* Année */
 .school-year {
     text-align: center;
-    font-size: 12px;
+    font-size: 8px;
     margin-top: 3px;
     color: #000000;
 }
 
 /* Zone centrale */
 .center-zone {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 20px;
-}
+        text-align: center; /* Centre le contenu inline */
+        width: 100%;
+        margin-top: 20px;
+    }
 
-/* QR */
-.qr-left img {
-    width: 80px;
-    height: 80px;
-}
+    .qr-left, .stamp-signature, .stamp-cachet {
+        display: inline-block;
+        vertical-align: middle; /* Aligne les images entre elles par le milieu */
+        /* margin: 0 20px;        Espacement horizontal */
+    }
 
-/* Cachet */
-.stamp-signature {
-    position: relative;
-    flex: 1;
-    text-align: center;
-}
+    .center-zone img {
+        max-width: 90px;
+        height: auto;
+    }
 
-.stamp-img {
-    width: 120px;
-    opacity: 0.75;
-}
 
 /* Label directrice */
 .director-label {
@@ -169,23 +168,23 @@
 .director-name {
     text-align: center;
     font-weight: 700;
-    font-size: 17px;
+    font-size: 12px;
     margin-top: 5px;
     color: #050505;
 }
 
 /* Footer */
 .footer-real {
-    position: absolute;
-    bottom: 5px;
-    left: 0;
-    right: 0;
+    position: relative;
     text-align: center;
     font-size: 10px;
     color: #000000;
 }
         .flag-bar {
-            position: absolute;
+             position: absolute;
+            bottom: 0px;
+    left: 0;
+    right: 0;  
             width: 100%;
             height: 1.5mm;
             display: table;
@@ -215,7 +214,7 @@
             <div class="school-top-tel">Tél: {{ $eleve->ecole->telephone ?? '' }}</div>
         </div>
         <div class="table-box">
-            <div class="table-label">Numero de table</div>
+            <div class="table-label"></div>
         </div>
         <!-- Titre mis à jour : Carte d'identité scolaire -->
         <div class="card-title">CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->nom ?? '2025-2026' }}</div>
@@ -228,8 +227,12 @@
                 <tr><td class="label">Classe</td><td>: {{ $eleve->classe->nom }}</td></tr>
                 <tr><td class="label">Adresse</td><td>: {{ $eleve->telephone_tuteur }}</td></tr>
             </table>
+            <div class="label-sign">Signature de l'apprenant</div>
+            <div class="sig-apprenant-box">
+                
+            </div>
         </div>
-        <div class="sig-apprenant-box">Signature de l'apprenant</div>
+        
         <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
         <div class="flag-bar" style="bottom: 0;">
             <div class="green"></div><div class="yellow"></div><div class="red"></div>
@@ -237,11 +240,6 @@
     </div>
     {{-- ================= Verso ================= --}}
 <div class="memp-card verso-photo">
-
-    <!-- Bande tricolore -->
-    <div class="flag-bar" style="bottom: 0;">
-            <div class="green"></div><div class="yellow"></div><div class="red"></div>
-    </div>
 
     <!-- Nom établissement -->
     <div class="school-name">
@@ -263,14 +261,20 @@
 
         <!-- Cachet + signature -->
         <div class="stamp-signature">
-            <div class="director-label">La Directrice</div>
+            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
+        </div>
+
+        <div class="stamp-cachet">
+            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
         </div>
 
     </div>
 
     <!-- Nom Directrice -->
     <div class="director-name">
-        {{ strtoupper($directeur->nom ?? 'DIRECTEUR') }}
+        <span style="margin-bottom: 3px">Le Directeur <br></span>
+        {{ $eleve->ecole->directeur->prenom }} 
+        {{ strtoupper($eleve->ecole->directeur->nom ?? 'DIRECTEUR') }}
     </div>
 
     <!-- Réalisation -->
@@ -278,6 +282,10 @@
         Réal: DONAMI CHRIST TEL: 97 22 48 87
     </div>
 
+    <!-- Bande tricolore -->
+    <div class="flag-bar" style="bottom: 0;">
+            <div class="green"></div><div class="yellow"></div><div class="red"></div>
+    </div>
 </div>
 </body>
 </html>

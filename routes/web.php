@@ -78,8 +78,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('eleves/import', [AdminStudentImportController::class, 'create'])->name('students.import.create');
         Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])->name('students.import.preview');
         Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])->name('students.import.storeAll');
-           Route::get('/profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'update'])->name('profile.update');
+        Route::get('/profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('/profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'update'])->name('profile.update');
 });
     });
 
