@@ -28,6 +28,14 @@ class StudentImportController extends Controller
 
     public function preview(Request $request)
     {
+        $user = auth()->user();
+
+        //Vérification si l'utilisateur possède une école
+        if (!$user->ecole) {
+            return response()->json([
+                'error' => "Vous devez d'abord créer votre école avant d'importer des élèves."
+            ], 403);
+        }
         $request->validate([
             'document' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
