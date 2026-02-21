@@ -48,6 +48,7 @@ class StudentImportController extends Controller
         }
 
         $images = $this->extractImagesFromExcel($worksheet);
+        $images = $this->extractImagesFromExcel($worksheet);
 
         // Mapping Rules
         $mappingRules = [
@@ -63,6 +64,8 @@ class StudentImportController extends Controller
             'nationalite' => ['nationalité', 'nation', 'pays'],
         ];
 
+        $indices = [];
+        $headerRow = null;
         $indices = [];
         $headerRow = null;
 
@@ -92,6 +95,12 @@ class StudentImportController extends Controller
                 }
             }
 
+            if ($matchCount >= 3) {
+                $indices = $rowIndices;
+                $headerRow = $row;
+                break;
+            }
+        }
             if ($matchCount >= 3) {
                 $indices = $rowIndices;
                 $headerRow = $row;
@@ -220,9 +229,9 @@ class StudentImportController extends Controller
             }
         }
         return $images;
-    }
+    } //end extractImagesFromExcel
 
-   
+
 
     private function formatExcelDate($value)
     {
@@ -231,12 +240,14 @@ class StudentImportController extends Controller
             if (is_numeric($value)) return Carbon::instance(Date::excelToDateTimeObject($value))->format('Y-m-d');
             if (preg_match('/(\d{2})\/(\d{2})\/(\d{4})/', $value, $m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
             return Carbon::parse($value)->format('Y-m-d');
-        } catch (\Exception $e) { return null; }
-    }
+        } catch (\Exception $e) {
+            return null;
+        }
+    } //end formatExcelDate
 
-   
 
-     public function storeAll(Request $request)
+
+    public function storeAll(Request $request)
     {
         $request->validate([
             'classe_id' => 'required|exists:classes,id',
@@ -250,7 +261,7 @@ class StudentImportController extends Controller
             foreach ($request->students as $index => $s) {
                 // Validation minimale (Nom/Prénom/Sexe/Date sont critiques)
                 if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
-                    throw new \Exception("Données critiques manquantes ligne " . ($index+1));
+                    throw new \Exception("Données critiques manquantes ligne " . ($index + 1));
                 }
 
                 // Si matricule présent, on vérifie les doublons
@@ -261,14 +272,14 @@ class StudentImportController extends Controller
                 $photoPath = null;
                 if (!empty($s['photo']) && preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
                     $data = base64_decode(substr($s['photo'], strpos($s['photo'], ',') + 1));
-                    $photoPath = 'eleves/photos/eleve_'.uniqid().'.'.strtolower($type[1]);
+                    $photoPath = 'eleves/photos/eleve_' . uniqid() . '.' . strtolower($type[1]);
                     Storage::disk('public')->put($photoPath, $data);
                 }
 
                 // Génération QR Code uniquement si matricule existe, sinon on utilise le nom
-                $qrContent = $s['matricule'] ?: $s['nom'].'_'.$s['prenom'].'_'.$index;
+                $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
-                
+
                 // (Logique de sauvegarde QR Code ici...)
 
                 Eleve::create([
@@ -289,5 +300,5 @@ class StudentImportController extends Controller
         });
 
         return response()->json(['success' => true]);
-    }
+    } //end storeAll
 }

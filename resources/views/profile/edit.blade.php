@@ -1,355 +1,170 @@
 @extends('layouts.ecole')
 
 @section('content')
-    <div class="profile-page-container">
-        {{-- NOTIFICATION FLOTTANTE A DROITE --}}
-        @if (session('status') === 'profile-updated')
-            <div id="toast-success" class="toast-notification">
-                <div class="toast-icon">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                </div>
-                <div class="toast-content">
-                    <span class="toast-title">Succès !</span>
-                    <p class="toast-message">Votre profil a été mis à jour.</p>
-                </div>
-                <button onclick="document.getElementById('toast-success').remove()" class="toast-close">&times;</button>
-            </div>
-            <script>
-                setTimeout(() => {
-                    const toast = document.getElementById('toast-success');
-                    if (toast) {
-                        toast.style.animation = 'fadeOutRight 0.5s ease forwards';
-                        setTimeout(() => toast.remove(), 500);
-                    }
-                }, 4000);
-            </script>
-        @endif
+<div class="profile-modern-page">
+    
+    {{-- ZONE DES NOTIFICATIONS À DROITE --}}
+    <div id="toast-container" class="toast-container"></div>
 
-        <div class="profile-header">
-            <h1>Paramètres du Profil</h1>
-            <p>Gérez vos informations personnelles et la sécurité de votre compte</p>
-        </div>
+    {{-- Script de lancement des Toasts --}}
+    <script>
+        window.onload = () => {
+            @if (session('status') === 'profile-updated')
+                createToast("✅ Profil mis à jour avec succès !", "#10b981");
+            @endif
 
-        <div class="profile-card">
-            <form method="post" action="{{ route('profile.update') }}" enctype="multipart/form-data">
-                @csrf
-                @method('patch')
+            @if ($errors->has('current_password'))
+                createToast("⚠️ {{ $errors->first('current_password') }}", "#ef4444");
+            @elseif ($errors->any())
+                createToast("❌ Erreur de validation", "#ef4444");
+            @endif
+        };
+    </script>
 
-                <!-- SECTION AVATAR -->
-                <div class="avatar-upload-section">
-                    <div class="avatar-wrapper">
-                        <img id="preview"
-                            src="{{ auth()->user()->avatar ? asset('storage/' . auth()->user()->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&background=3b82f6&color=fff' }}"
-                            alt="Avatar">
-                        <label for="avatar" class="upload-badge" title="Changer la photo">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                <path
-                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <circle cx="12" cy="13" r="4" />
-                            </svg>
-                            <input type="file" name="avatar" id="avatar" hidden accept="image/*">
-                        </label>
-                    </div>
-                    <div class="avatar-info">
-                        <h3>Photo de profil</h3>
-                        <p>JPG, PNG ou GIF. Max 2Mo.</p>
-                    </div>
-                </div>
-
-                <div class="form-grid">
-                    <!-- INFOS DE BASE (LECTURE SEULE) -->
-                    <div class="form-section">
-                        <h4 class="section-title"><svg viewBox="0 0 24 24" width="18" fill="none"
-                                stroke="currentColor" stroke-width="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                            </svg> Informations générales</h4>
-
-                        <div class="input-group">
-                            <label>Nom et Prénoms</label>
-                            <input type="text" name="name" value="{{ $user->name }}" readonly
-                                style="cursor: not-allowed; opacity: 0.7; background: var(--p-bg);">
-                        </div>
-
-                        <div class="input-group">
-                            <label>Adresse Email</label>
-                            <input type="email" name="email" value="{{ $user->email }}" readonly
-                                style="cursor: not-allowed; opacity: 0.7; background: var(--p-bg);">
-                        </div>
-                    </div>
-
-                    <!-- SECURITE (AVEC OEIL) -->
-                    <div class="form-section">
-                        <h4 class="section-title"><svg viewBox="0 0 24 24" width="18" fill="none"
-                                stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                            </svg> Sécurité</h4>
-
-                        <div class="input-group" style="position: relative;">
-                            <label>Nouveau mot de passe</label>
-                            <input type="password" name="password" id="pass1" placeholder="••••••••"
-                                style="padding-right: 45px;">
-                            <button type="button" onclick="togglePass('pass1')"
-                                style="position: absolute; right: 12px; top: 38px; background: none; border: none; cursor: pointer; color: var(--p-text-muted);">
-                                <svg id="eye-pass1" viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                    <circle cx="12" cy="12" r="3" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div class="input-group" style="position: relative;">
-                            <label>Confirmer le mot de passe</label>
-                            <input type="password" name="password_confirmation" id="pass2" placeholder="••••••••"
-                                style="padding-right: 45px;">
-                            <button type="button" onclick="togglePass('pass2')"
-                                style="position: absolute; right: 12px; top: 38px; background: none; border: none; cursor: pointer; color: var(--p-text-muted);">
-                                <svg id="eye-pass2" viewBox="0 0 24 24" width="20" fill="none"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                    <circle cx="12" cy="12" r="3" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn-save">
-                        <span class="btn-text">Enregistrer les modifications</span>
-                        <svg viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                    </button>
-                </div>
-            </form>
-        </div>
+    <div class="profile-header">
+        <h1>Mon Profil</h1>
+        <p>Mettez à jour vos informations et sécurisez votre accès</p>
     </div>
 
-    <style>
-        /* CSS POUR LA NOTIFICATION FLOTTANTE */
-        .toast-notification {
-            position: fixed;
-            top: 30px;
-            right: 30px;
-            background: #10b981;
-            color: white;
-            padding: 16px 24px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-            z-index: 9999;
-            min-width: 300px;
-            animation: slideInRight 0.5s ease-out forwards;
-        }
+    <div class="profile-card-main">
+        <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" autocomplete="off">
+            @csrf
+            @method('PATCH')
 
-        .toast-icon {
-            background: rgba(255, 255, 255, 0.2);
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+            {{-- SECTION AVATAR --}}
+            <div class="avatar-section">
+                <div class="avatar-wrapper">
+                    <img id="preview" src="{{ auth()->user()->avatar ? asset('storage/'.auth()->user()->avatar).'?v='.time() : 'https://ui-avatars.com/api/?name='.urlencode(auth()->user()->name).'&background=3b82f6&color=fff' }}" alt="Avatar">
+                    <label for="avatar-input" class="upload-badge">
+                        <svg viewBox="0 0 24 24" width="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        <input type="file" name="avatar" id="avatar-input" hidden accept="image/*">
+                    </label>
+                </div>
+                <div class="avatar-text">
+                    <h3>Photo de profil</h3>
+                    <p>Format JPG, PNG ou GIF (Max 2Mo)</p>
+                </div>
+            </div>
 
-        .toast-title {
-            font-weight: 800;
-            font-size: 15px;
-            display: block;
-        }
+            <div class="form-grid">
+                {{-- IDENTITÉ --}}
+                <div class="form-col">
+                    <h4 class="label-title">Identité</h4>
+                    <div class="field-group">
+                        <label>Nom et Prénoms</label>
+                        <input type="text" name="name" value="{{ old('name', $user->name) }}">
+                    </div>
+                    <div class="field-group">
+                        <label>Adresse Email (Lecture seule)</label>
+                        <input type="email" value="{{ $user->email }}" readonly class="readonly-input">
+                    </div>
+                </div>
 
-        .toast-message {
-            font-size: 13px;
-            margin: 0;
-            opacity: 0.9;
-        }
+                {{-- SÉCURITÉ --}}
+                <div class="form-col">
+                    <h4 class="label-title">Validation & Sécurité</h4>
+                    
+                    {{-- CHAMP MOT DE PASSE ACTUEL (VIDE ET SANS AUTO-REMPLISSAGE) --}}
+                    <div class="field-group highlight-field">
+                        <label>Votre mot de passe actuel (Requis pour valider)</label>
+                        <div class="input-wrapper">
+                            <input type="password" 
+                                   name="current_password" 
+                                   id="current_password" 
+                                   placeholder="Saisissez votre mot de passe actuel" 
+                                   autocomplete="new-password" 
+                                   value="">
+                            <button type="button" class="eye-btn" onclick="togglePass('current_password')">
+                                <svg class="eye-icon" viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
 
-        .toast-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            margin-left: auto;
-            opacity: 0.7;
-        }
+                    <div class="field-group">
+                        <label>Nouveau mot de passe (Facultatif)</label>
+                        <div class="input-wrapper">
+                            <input type="password" name="password" id="password" placeholder="Min. 8 caractères" autocomplete="new-password">
+                            <button type="button" class="eye-btn" onclick="togglePass('password')">
+                                <svg class="eye-icon" viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
 
-        @keyframes slideInRight {
-            from {
-                transform: translateX(120%);
-                opacity: 0;
-            }
+                    <div class="field-group">
+                        <label>Confirmer nouveau mot de passe</label>
+                        <div class="input-wrapper">
+                            <input type="password" name="password_confirmation" id="password_confirm" placeholder="Répéter le mot de passe" autocomplete="new-password">
+                            <button type="button" class="eye-btn" onclick="togglePass('password_confirm')">
+                                <svg class="eye-icon" viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
+            <button type="submit" class="save-btn-modern">Enregistrer les modifications</button>
+        </form>
+    </div>
+</div>
 
-        @keyframes fadeOutRight {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
+<style>
+/* --- DESIGN SYSTEM --- */
+:root { --p-bg: #f8fafc; --p-card: #ffffff; --p-text: #0f172a; --p-muted: #64748b; --p-border: #e2e8f0; --p-primary: #3b82f6; }
+[data-theme='carbon'] .profile-modern-page { --p-bg: #0f172a; --p-card: #1e293b; --p-text: #f8fafc; --p-muted: #94a3b8; --p-border: #334155; }
 
-            to {
-                transform: translateX(120%);
-                opacity: 0;
-            }
-        }
+.profile-modern-page { padding: 40px 20px; max-width: 950px; margin: 0 auto; font-family: 'Inter', sans-serif; }
+.profile-card-main { background: var(--p-card); border-radius: 24px; padding: 40px; border: 1px solid var(--p-border); box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
 
-        /* ... (VOTRE CSS HABITUEL CI-DESSOUS) ... */
-        :root {
-            --p-bg: #f8fafc;
-            --p-card: #ffffff;
-            --p-text: #1e293b;
-            --p-text-muted: #64748b;
-            --p-border: #e2e8f0;
-            --p-input-bg: #ffffff;
-            --p-primary: #3b82f6;
-            --p-primary-hover: #2563eb;
-            --p-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-        }
+.avatar-section { display: flex; align-items: center; gap: 20px; margin-bottom: 35px; border-bottom: 1px solid var(--p-border); padding-bottom: 30px; }
+.avatar-wrapper { position: relative; width: 100px; height: 100px; }
+.avatar-wrapper img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--p-primary); padding: 3px; background: #fff; }
+.upload-badge { position: absolute; bottom: 0; right: 0; background: var(--p-primary); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid var(--p-card); }
 
-        [data-theme='carbon'],
-        .carbon {
-            --p-bg: #0f172a;
-            --p-card: #1e293b;
-            --p-text: #f1f5f9;
-            --p-text-muted: #94a3b8;
-            --p-border: #334155;
-            --p-input-bg: #0f172a;
-            --p-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-        }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.label-title { font-size: 13px; font-weight: 800; color: var(--p-primary); text-transform: uppercase; margin-bottom: 20px; }
+.field-group { margin-bottom: 18px; }
+.field-group label { display: block; font-size: 13px; font-weight: 600; color: var(--p-muted); margin-bottom: 8px; }
 
-        .profile-page-container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            font-family: 'Inter', sans-serif;
-        }
+.input-wrapper { position: relative; }
+.field-group input { width: 100%; padding: 12px 45px 12px 16px; border-radius: 12px; border: 1.5px solid var(--p-border); background: var(--p-card); color: var(--p-text); }
+.eye-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--p-muted); cursor: pointer; }
 
-        .profile-header h1 {
-            font-size: 28px;
-            font-weight: 800;
-            color: var(--p-text);
-            margin-bottom: 8px;
-        }
+.highlight-field input { border-color: #3b82f6 !important; background: rgba(59, 130, 246, 0.02); }
+.readonly-input { background: var(--p-bg) !important; cursor: not-allowed; opacity: 0.7; }
 
-        .profile-card {
-            background: var(--p-card);
-            border: 1px solid var(--p-border);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: var(--p-shadow);
-        }
+.save-btn-modern { width: 100%; background: var(--p-primary); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; margin-top: 20px; cursor: pointer; transition: 0.3s; }
+.save-btn-modern:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3); }
 
-        .avatar-upload-section {
-            display: flex;
-            align-items: center;
-            gap: 24px;
-            margin-bottom: 40px;
-            padding-bottom: 32px;
-            border-bottom: 1px solid var(--p-border);
-        }
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+.toast-item { min-width: 280px; padding: 16px 20px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 10px; animation: slideIn 0.4s ease forwards; }
+@keyframes slideIn { from { transform: translateX(120%); } to { transform: translateX(0); } }
+</style>
 
-        .avatar-wrapper {
-            position: relative;
-            width: 100px;
-            height: 100px;
-        }
+<script>
+    // Aperçu photo
+    document.getElementById('avatar-input').onchange = e => {
+        const [file] = e.target.files;
+        if (file) document.getElementById('preview').src = URL.createObjectURL(file);
+    }
 
-        .avatar-wrapper img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--p-primary);
-            padding: 3px;
-            background: var(--p-card);
-        }
+    // Toggle oeil
+    function togglePass(id) {
+        const input = document.getElementById(id);
+        input.type = input.type === "password" ? "text" : "password";
+    }
 
-        .upload-badge {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            background: var(--p-primary);
-            color: white;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border: 3px solid var(--p-card);
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-        }
-
-        .input-group label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--p-text-muted);
-            margin-bottom: 8px;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 12px 16px;
-            background: var(--p-input-bg);
-            border: 1.5px solid var(--p-border);
-            border-radius: 12px;
-            color: var(--p-text);
-        }
-
-        .btn-save {
-            background: var(--p-primary);
-            color: white;
-            border: none;
-            padding: 14px 32px;
-            border-radius: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-    </style>
-
-    <script>
-        // Preview image
-        document.getElementById('avatar').onchange = evt => {
-            const [file] = document.getElementById('avatar').files
-            if (file) {
-                document.getElementById('preview').src = URL.createObjectURL(file)
-            }
-        }
-
-        // Toggle Password Visibility
-        function togglePass(id) {
-            const input = document.getElementById(id);
-            const icon = document.getElementById('eye-' + id);
-            if (input.type === "password") {
-                input.type = "text";
-                icon.style.stroke = "var(--p-primary)";
-            } else {
-                input.type = "password";
-                icon.style.stroke = "currentColor";
-            }
-        }
-    </script>
+    // Fonction Toast
+    function createToast(text, color) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast-item';
+        toast.style.backgroundColor = color;
+        toast.innerText = text;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = "slideIn 0.4s ease reverse forwards";
+            setTimeout(() => toast.remove(), 400);
+        }, 4000);
+    }
+</script>
 @endsection

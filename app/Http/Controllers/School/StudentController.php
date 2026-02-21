@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\School;
-
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Eleve;
@@ -10,15 +10,61 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
-
+use App\Models\SchoolYear; 
 class StudentController extends Controller
 {
+    // public function index(Request $request)
+    // {
+    //     $selectedClasse = $request->classe_id ?? null;
+    //     $activeYear = \App\Models\SchoolYear::where('is_active', 1)->first();
+
+    //     $query = Eleve::query()->where('ecole_id', auth()->user()->ecole->id);
+
+    //     if ($selectedClasse) {
+    //         $query->where('classe_id', $selectedClasse);
+    //     }
+
+    //     $eleves = $query->orderBy('nom')->get();
+
+    //     $allClasses = Classe::orderBy('nom')->get();
+
+    //     $classes = $allClasses
+    //         ->groupBy(function ($classe) {
+    //             if (preg_match('/(2nde|1ère|Tle)/i', $classe->nom)) {
+    //                 return $classe->nom;
+    //             }
+    //             return preg_replace('/\s+.*/', '', $classe->nom);
+    //         })
+    //         ->map(fn($group) => $group->first())
+    //         ->values();
+
+    //     return view('school.eleves.index', compact(
+    //         'eleves',
+    //         'classes',
+    //         'selectedClasse',
+    //         'activeYear'
+    //     ));
+    // }
+
     public function index(Request $request)
     {
         $selectedClasse = $request->classe_id ?? null;
         $activeYear = \App\Models\SchoolYear::where('is_active', 1)->first();
 
-        $query = Eleve::query()->where('ecole_id', auth()->user()->ecole->id);
+        $user = auth()->user();
+        $ecoleId = optional($user->ecole)->id;
+
+        // Si pas d'école → liste vide
+        if (!$ecoleId) {
+            return view('school.eleves.index', [
+                'eleves' => collect(), // collection vide
+                'classes' => collect(),
+                'selectedClasse' => $selectedClasse,
+                'activeYear' => $activeYear
+            ]);
+        }
+
+        $query = Eleve::query()->where('ecole_id', $ecoleId);
 
         if ($selectedClasse) {
             $query->where('classe_id', $selectedClasse);
@@ -44,7 +90,7 @@ class StudentController extends Controller
             'selectedClasse',
             'activeYear'
         ));
-    }
+    } //end index
 
     public function create()
     {
@@ -67,7 +113,9 @@ class StudentController extends Controller
 
 
     public function store(Request $request)
-    {
+    { 
+       $user = \Illuminate\Support\Facades\Auth::user();
+       $ecole = $user->ecole;
         $validated = $request->validate([
             'classe_id' => 'required|exists:classes,id',
             'nom' => 'required|string|max:255',
@@ -80,7 +128,7 @@ class StudentController extends Controller
             'matricule_edumaster' => 'required|string|unique:eleves,matricule_edumaster',
         ]);
 
-        $ecole = auth()->user()->ecole;
+        
 
         // Upload photo
         $photoPath = $request->file('photo')
@@ -168,4 +216,47 @@ class StudentController extends Controller
             ->route('school.students.index')
             ->with('success', 'Élève supprimé avec succès.');
     }
+
+
+
+        
+public function downloadCard($id)
+{
+    // On récupère l'élève avec sa classe et son école
+    $eleve = Eleve::with(['classe'])->findOrFail($id);
+    
+    // On récupère l'année scolaire active
+    $activeYear = SchoolYear::where('is_active', 1)->first();
+
+    // On prépare les données pour la vue en les nommant "student" 
+    // pour que ton code HTML (que tu as envoyé) fonctionne sans erreur
+    $data = [
+        'student' => $eleve,
+        'activeYear' => $activeYear
+    ];
+
+    $pdf = Pdf::loadView('school.eleves.card-pdf', $data);
+
+    // Format ISO Carte (86mm x 55mm)
+    $pdf->setPaper([0, 0, 243.78, 155.91], 'portrait');
+
+    return $pdf->stream('Carte_'.$eleve->nom.'.pdf');
+}
+
+
+public function viewCards(Request $request)
+{
+    $activeYear = SchoolYear::where('is_active', 1)->first();
+    
+    // On peut filtrer par classe si on veut
+    $query = Eleve::with('classe');
+    if ($request->classe_id) {
+        $query->where('classe_id', $request->classe_id);
+    }
+    
+    $eleves = $query->get();
+
+    return view('school.eleves.cards-view', compact('eleves', 'activeYear'));
+}
+
 }
