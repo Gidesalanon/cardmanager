@@ -48,7 +48,6 @@ class StudentImportController extends Controller
         }
 
         $images = $this->extractImagesFromExcel($worksheet);
-        $images = $this->extractImagesFromExcel($worksheet);
 
         // Mapping Rules
         $mappingRules = [
@@ -59,13 +58,11 @@ class StudentImportController extends Controller
             'prenom'      => ['prenom', 'prenoms', 'prénom'],
             'nom'         => ['nom', 'candidat'],
             'date_naiss'  => ['date de naissance','date naissance', 'né le', 'date naiss', 'date'],
-            'lieu_naiss'  => ['lieu de naissance', 'lieu de naissance', 'lieu naiss', 'lieu' ],
+            'lieu_naiss'  => ['lieu de naissance', 'lieu naissance', 'lieu naiss', 'lieu' ],
             'telephone'   => ['telephone', 'parent', 'contact', 'tuteur', 'téléphone','tel', 'tél'],
             'nationalite' => ['nationalité', 'nation', 'pays'],
         ];
 
-        $indices = [];
-        $headerRow = null;
         $indices = [];
         $headerRow = null;
 
@@ -101,12 +98,6 @@ class StudentImportController extends Controller
                 break;
             }
         }
-            if ($matchCount >= 3) {
-                $indices = $rowIndices;
-                $headerRow = $row;
-                break;
-            }
-        }
 
         if (!$headerRow) {
             return response()->json([
@@ -116,7 +107,6 @@ class StudentImportController extends Controller
         }
 
         $students = [];
-        // On commence la lecture APRES l'en-tête
         for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
             
             $getVal = function($field) use ($worksheet, $indices, $row) {
@@ -136,10 +126,8 @@ class StudentImportController extends Controller
                 $prenom = $getVal('prenom');
             }
 
-            // Important : On ignore les lignes où le nom est vide ou juste un numéro
             if (empty($nom) || is_numeric($nom)) continue;
 
-            // Traitement Date / Lieu / Sexe (ton code original)
             $dateNaiss = null; 
             $lieuNaiss = "";
             if (isset($indices['date_lieu'])) {
@@ -174,7 +162,6 @@ class StudentImportController extends Controller
             ];
         }
 
-        // 3. VERIFICATION FINALE : Y a-t-il des élèves dans le tableau ?
         if (empty($students)) {
             return response()->json([
                 'error' => 'Aucune donnée d\'élève trouvée.',
@@ -190,7 +177,6 @@ class StudentImportController extends Controller
     {
         $images = [];
         foreach ($worksheet->getDrawingCollection() as $drawing) {
-            // On récupère la ligne à partir des coordonnées (ex: B4 -> 4)
             $coordinates = $drawing->getCoordinates();
             if (preg_match('/(\d+)/', $coordinates, $matches)) {
                 $rowNumber = (int)$matches[1];
@@ -203,20 +189,16 @@ class StudentImportController extends Controller
                     $contents = ob_get_clean();
                     $mime = $drawing->getMimeType();
                 } else {
-                    // Pour les fichiers standard (Drawing)
                     $path = $drawing->getPath();
                     if (file_exists($path)) {
                         $contents = file_get_contents($path);
                     } else {
-                        // Si le chemin est relatif à l'archive Excel
                         $zipReader = fopen($path, 'r');
                         if ($zipReader) {
                             $contents = stream_get_contents($zipReader);
                             fclose($zipReader);
                         }
                     }
-
-                    // Détecter le mime type si possible
                     if ($contents) {
                         $finfo = new \finfo(FILEINFO_MIME_TYPE);
                         $mime = $finfo->buffer($contents);
@@ -229,9 +211,7 @@ class StudentImportController extends Controller
             }
         }
         return $images;
-    } //end extractImagesFromExcel
-
-
+    }
 
     private function formatExcelDate($value)
     {
@@ -243,9 +223,7 @@ class StudentImportController extends Controller
         } catch (\Exception $e) {
             return null;
         }
-    } //end formatExcelDate
-
-
+    }
 
     public function storeAll(Request $request)
     {
@@ -259,12 +237,10 @@ class StudentImportController extends Controller
 
         DB::transaction(function () use ($request, $ecole) {
             foreach ($request->students as $index => $s) {
-                // Validation minimale (Nom/Prénom/Sexe/Date sont critiques)
                 if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
                     throw new \Exception("Données critiques manquantes ligne " . ($index + 1));
                 }
 
-                // Si matricule présent, on vérifie les doublons
                 if (!empty($s['matricule']) && Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
                     continue;
                 }
@@ -276,11 +252,8 @@ class StudentImportController extends Controller
                     Storage::disk('public')->put($photoPath, $data);
                 }
 
-                // Génération QR Code uniquement si matricule existe, sinon on utilise le nom
                 $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
-
-                // (Logique de sauvegarde QR Code ici...)
 
                 Eleve::create([
                     'ecole_id' => $ecole->id,
@@ -300,5 +273,5 @@ class StudentImportController extends Controller
         });
 
         return response()->json(['success' => true]);
-    } //end storeAll
+    }
 }
