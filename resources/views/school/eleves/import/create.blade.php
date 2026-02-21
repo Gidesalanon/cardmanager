@@ -249,7 +249,7 @@
 
             <!-- REGLES -->
             <div class="card section-spacing" style="background:#f9fafb; border-left:5px solid #2563eb;">
-                <h3 style="margin-bottom:10px;">📌 Règles importantes</h3>
+                <h3 style="margin-bottom:10px;"> Règles importantes</h3>
                 <ul style="margin:0; padding-left:18px; line-height:1.7;">
                     <li>Le fichier doit être au format Excel (.xlsx, .xls ou .csv).</li>
                     <li>Chaque ligne doit au moins avoir un <strong>Nom</strong>.</li>
