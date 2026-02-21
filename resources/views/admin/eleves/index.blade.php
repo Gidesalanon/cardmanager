@@ -68,7 +68,7 @@
                         <td>{{ $eleve->telephone_tuteur }}</td>
 
                         <td style="display:flex; gap:8px;">
-                            <a href="{{ route('admin.students.edit',$eleve) }}" class="circle-btn circle-edit" title="Modifier">✏</a>
+                            <a href="{{ route('admin.students.edit',$eleve) }}" class="circle-btn circle-edit" title="Modifier"><i class="fa-solid fa-pen"></i></a>
 
                             {{-- Formulaire avec ID unique --}}
                             <form id="delete-form-{{ $eleve->id }}" action="{{ route('admin.students.destroy',$eleve) }}" method="POST" style="display:none;">
@@ -81,11 +81,11 @@
                                     onclick="confirmDelete({{ $eleve->id }}, '{{ addslashes($eleve->nom . ' ' . $eleve->prenom) }}')" 
                                     class="circle-btn circle-delete" 
                                     title="Supprimer">
-                                🗑
+                                <i class="fa-solid fa-trash"></i>
                             </button>
 
-                            <a href="{{ route('admin.students.export.card.pdf',$eleve) }}" class="circle-btn" style="background:#2563eb;" title="Exporter PDF">📄</a>
-                            <a href="{{ route('admin.students.export.card.image',$eleve) }}" class="circle-btn" style="background:#059669;" title="Exporter Image">🖼</a>
+                            <a href="{{ route('admin.students.export.card.pdf',$eleve) }}" class="circle-btn" style="background:#2563eb;" title="Exporter PDF"> <i class="fa-solid fa-download"></i></a>
+                            <a href="{{ route('admin.students.export.card.image',$eleve) }}" class="circle-btn" style="background:#059669;" title="Exporter Image" onclick="event.preventDefault(); alert('⚠️ Cette fonctionnalité n\'est pas encore disponible.');"> <i class="fa-solid fa-file-image"></i></a>
                         </td>
                     </tr>
                 @empty
