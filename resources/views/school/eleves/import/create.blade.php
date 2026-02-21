@@ -18,7 +18,53 @@
     0%{ transform:rotate(0deg); }
     100%{ transform:rotate(360deg); }
 }
+/* ================= MODAL ERROR ================= */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
 
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
+    text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    animation: modalPop 0.3s ease-out;
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal-icon {
+    width: 60px; height: 60px;
+    background: #fee2e2;
+    color: #dc2626;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    margin: 0 auto 20px;
+}
+
+.btn-close-modal {
+    margin-top: 20px;
+    background: #111827;
+    color: white;
+    padding: 10px 25px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    width: 100%;
+}
 /* ================= BUTTONS ================= */
 .import-btn{
     display:inline-flex;
@@ -168,6 +214,21 @@
     <div x-show="loading" style="margin-top:10px; width:100%; background:#e5e7eb;">
         <div class="progress-bar" :style="'width:'+progress+'%'"></div>
     </div>
+
+    <!-- MODAL D'ERREUR CENTRE -->
+<template x-if="errorModal.show">
+    <div class="modal-overlay" @click.self="errorModal.show = false">
+        <div class="modal-content">
+            <div class="modal-icon">⚠️</div>
+            <h3 style="margin-bottom:10px; font-size:1.2rem; color:#111827;" x-text="errorModal.title"></h3>
+            <p style="color:#4b5563; line-height:1.5;" x-text="errorModal.message"></p>
+            
+            <button class="btn-close-modal" @click="errorModal.show = false">
+                J'ai compris
+            </button>
+        </div>
+    </div>
+</template>
 </div>
 
 <!-- REGLES IMPORTANTES -->
@@ -342,32 +403,56 @@ function studentImport(){
             }
         },
 
-        async upload(){
-            if(!this.file){ this.notify('Choisir un fichier','error'); return; }
-
-            this.loading=true;
-            this.progress=10;
-
-            const fd=new FormData();
-            fd.append('document',this.file);
-
-            const r=await fetch("{{ route('school.students.import.preview') }}",{
-                method:'POST',
-                headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'},
-                body:fd
-            });
-
-            this.progress=70;
-
-            const d=await r.json();
-            this.students=d.students??[];
-
-            this.progress=100;
-            setTimeout(()=>{ this.loading=false; this.progress=0; },500);
-
-            this.notify('Analyse terminée','success');
+        errorModal: {
+            show: false,
+            title: '',
+            message: ''
         },
 
+        // Nouvelle méthode pour afficher l'erreur proprement
+        showError(title, message) {
+            this.errorModal.title = title;
+            this.errorModal.message = message;
+            this.errorModal.show = true;
+        },
+
+        async upload() {
+            if (!this.file) { this.notify('Choisir un fichier', 'error'); return; }
+
+            this.loading = true;
+            this.progress = 10;
+            this.students = [];
+
+            const fd = new FormData();
+            fd.append('document', this.file);
+
+            try {
+                const r = await fetch("{{ route('school.students.import.preview') }}", {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: fd
+                });
+
+                const d = await r.json();
+
+                if (!r.ok) {
+                    // REMPLACEMENT DE ALERT() PAR NOTRE MODAL
+                    this.showError(d.error || 'Erreur d\'analyse', d.details || 'Le fichier ne peut pas être traité.');
+                    this.loading = false;
+                    this.progress = 0;
+                    return;
+                }
+
+                this.students = d.students ?? [];
+                this.progress = 100;
+                this.notify('Analyse terminée avec succès', 'success');
+
+            } catch (e) {
+                this.showError('Erreur technique', 'Impossible de contacter le serveur. Vérifiez votre connexion.');
+            } finally {
+                setTimeout(() => { this.loading = false; this.progress = 0; }, 500);
+            }
+        },
         addAfter(i){
             this.students.splice(i+1,0,{
                 photo:null,
