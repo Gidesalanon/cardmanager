@@ -305,60 +305,121 @@ class StudentImportController extends Controller
 
         $ecole = Auth::user()->ecole;
         abort_if(!$ecole, 403);
+        
+        $successCount = 0;
+        $duplicateCount = 0;
+        $errorCount = 0;
+        $duplicates = [];
+
         try {
-                DB::transaction(function () use ($request, $ecole) {
+            DB::transaction(function () use ($request, $ecole, &$successCount, &$duplicateCount, &$errorCount, &$duplicates) {
                 foreach ($request->students as $index => $s) {
+                    Log::info("Traitement élève " . ($index + 1) . ": " . json_encode($s));
+                    
                     if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
                         throw new \Exception("Données critiques manquantes ligne " . ($index + 1));
                     }
-    
-                    if (!empty($s['matricule']) && Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
-                        continue;
+
+                    // Vérifier si le matricule existe déjà
+                    if (!empty($s['matricule'])) {
+                        $existingStudent = Eleve::where('matricule_edumaster', $s['matricule'])->first();
+                        if ($existingStudent) {
+                            Log::warning("Matricule déjà exists: " . $s['matricule'] . " (ID: " . $existingStudent->id . ")");
+                            $duplicates[] = $s['matricule'];
+                            $duplicateCount++;
+                            
+                            // Déclencher une exception spécifique pour les doublons
+                            throw new \Exception("Doublon de matricule détecté: " . $s['matricule'] . " (ligne " . ($index + 1) . ")");
+                        }
                     }
-    
+
                     $photoPath = null;
                     if (!empty($s['photo']) && preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
                         $data = base64_decode(substr($s['photo'], strpos($s['photo'], ',') + 1));
                         $photoPath = 'eleves/photos/eleve_' . uniqid() . '.' . strtolower($type[1]);
                         Storage::disk('public')->put($photoPath, $data);
+                        Log::info("Photo enregistrée: " . $photoPath);
                     }
-    
-    
+
                     // Génération QR
                     $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
                     $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
                     $qrFullPath = storage_path('app/public/' . $qrCodePath);
-    
+
                     if (!file_exists(dirname($qrFullPath))) {
                         mkdir(dirname($qrFullPath), 0755, true);
                     }
-    
+
                     $qrCode = new QrCode($qrContent);
                     $writer = new PngWriter();
                     $result = $writer->write($qrCode);
                     $result->saveToFile($qrFullPath);
-    
-                    Eleve::create([
-                        'ecole_id' => $ecole->id,
-                        'classe_id' => $request->classe_id,
-                        'nom' => $s['nom'],
-                        'prenom' => $s['prenom'],
-                        'sexe' => $s['sexe'],
-                        'nationalite' => $s['nationalite'] ?? 'BENIN',
-                        'date_naissance' => $s['date_naissance'],
-                        'lieu_naissance' => $s['lieu_naissance'] ?? '',
-                        'telephone_tuteur' => $s['telephone_tuteur'] ?? '',
-                        'photo' => $photoPath,
-                        'matricule_edumaster' => $s['matricule'] ?? null,
-                        'qr_code' => $qrCodePath,
-                    ]);
+
+                    try {
+                        $eleve = Eleve::create([
+                            'ecole_id' => $ecole->id,
+                            'classe_id' => $request->classe_id,
+                            'nom' => $s['nom'],
+                            'prenom' => $s['prenom'],
+                            'sexe' => $s['sexe'],
+                            'nationalite' => $s['nationalite'] ?? 'BENIN',
+                            'date_naissance' => $s['date_naissance'],
+                            'lieu_naissance' => $s['lieu_naissance'] ?? '',
+                            'telephone_tuteur' => $s['telephone_tuteur'] ?? '',
+                            'photo' => $photoPath,
+                            'matricule_edumaster' => $s['matricule'] ?? null,
+                            'qr_code' => $qrCodePath,
+                        ]);
+                        
+                        Log::info("Élève créé avec succès: ID=" . $eleve->id . " Matricule=" . ($s['matricule'] ?? 'NULL'));
+                        $successCount++;
+                        
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        if (str_contains($e->getMessage(), 'UNIQUE') || str_contains($e->getMessage(), 'matricule_edumaster')) {
+                            Log::error("Erreur contrainte unique matricule: " . $s['matricule']);
+                            $duplicates[] = $s['matricule'];
+                            $duplicateCount++;
+                        } else {
+                            Log::error("Erreur création élève " . ($index + 1) . ": " . $e->getMessage());
+                            $errorCount++;
+                        }
+                    }
                 }
             });
-    
-            return response()->json(['success' => true]);
-    
-        } catch (Exception $e) {
+
+            Log::info("=== FIN IMPORTATION ===");
+            Log::info("Succès: $successCount, Doublons: $duplicateCount, Erreurs: $errorCount");
+            
+            if ($duplicateCount > 0) {
+                Log::warning("Matricules en double: " . implode(', ', $duplicates));
+            }
+
+            return response()->json([
+                'success' => $duplicateCount === 0,
+                'message' => $duplicateCount > 0 
+                    ? "$duplicateCount doublon(s) détecté(s): " . implode(', ', $duplicates)
+                    : "$successCount élève(s) importé(s) avec succès",
+                'stats' => [
+                    'success' => $successCount,
+                    'duplicates' => $duplicateCount,
+                    'errors' => $errorCount,
+                    'duplicate_matricules' => $duplicates
+                ]
+            ]);
+
+        } catch (\Exception $e) {
             Log::error('Erreur Store Import: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            // Vérifier si c'est une erreur de doublon
+            if (str_contains($e->getMessage(), 'Doublon de matricule')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'type' => 'duplicate_matricule'
+                ], 422);
+            }
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'enregistrement des élèves.',
