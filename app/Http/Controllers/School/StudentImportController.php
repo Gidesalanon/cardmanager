@@ -297,74 +297,117 @@ class StudentImportController extends Controller
 
 
     public function storeAll(Request $request)
-    {
-        $request->validate([
-            'classe_id' => 'required|exists:classes,id',
-            'students'  => 'required|array|min:1',
-        ]);
+{
+    $request->validate([
+        'classe_id' => 'required|exists:classes,id',
+        'students'  => 'required|array|min:1',
+    ]);
 
-        $ecole = Auth::user()->ecole;
-        abort_if(!$ecole, 403);
-        try {
-                DB::transaction(function () use ($request, $ecole) {
-                foreach ($request->students as $index => $s) {
-                    if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
-                        throw new \Exception("Données critiques manquantes ligne " . ($index + 1));
-                    }
-    
-                    if (!empty($s['matricule']) && Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
-                        continue;
-                    }
-    
-                    $photoPath = null;
-                    if (!empty($s['photo']) && preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
-                        $data = base64_decode(substr($s['photo'], strpos($s['photo'], ',') + 1));
-                        $photoPath = 'eleves/photos/eleve_' . uniqid() . '.' . strtolower($type[1]);
-                        Storage::disk('public')->put($photoPath, $data);
-                    }
-    
-    
-                    // Génération QR
-                    $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
-                    $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
-                    $qrFullPath = storage_path('app/public/' . $qrCodePath);
-    
-                    if (!file_exists(dirname($qrFullPath))) {
-                        mkdir(dirname($qrFullPath), 0755, true);
-                    }
-    
-                    $qrCode = new QrCode($qrContent);
-                    $writer = new PngWriter();
-                    $result = $writer->write($qrCode);
-                    $result->saveToFile($qrFullPath);
-    
-                    Eleve::create([
-                        'ecole_id' => $ecole->id,
-                        'classe_id' => $request->classe_id,
-                        'nom' => $s['nom'],
-                        'prenom' => $s['prenom'],
-                        'sexe' => $s['sexe'],
-                        'nationalite' => $s['nationalite'] ?? 'BENIN',
-                        'date_naissance' => $s['date_naissance'],
-                        'lieu_naissance' => $s['lieu_naissance'] ?? '',
-                        'telephone_tuteur' => $s['telephone_tuteur'] ?? '',
-                        'photo' => $photoPath,
-                        'matricule_edumaster' => $s['matricule'] ?? null,
-                        'qr_code' => $qrCodePath,
-                    ]);
+    $ecole = Auth::user()->ecole;
+    abort_if(!$ecole, 403);
+
+    try {
+        // On initialise des compteurs pour le rapport final
+        $results = DB::transaction(function () use ($request, $ecole) {
+            $createdCount = 0;
+            $skippedCount = 0;
+
+            foreach ($request->students as $index => $s) {
+                if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
+                    throw new Exception("Données critiques manquantes ligne " . ($index + 1));
                 }
-            });
-    
-            return response()->json(['success' => true]);
-    
-        } catch (Exception $e) {
-            Log::error('Erreur Store Import: ' . $e->getMessage());
+
+                // VERIFICATION DE DOUBLON
+                // On vérifie si un élève avec ce matricule existe déjà dans l'école
+                $exists = Eleve::where('ecole_id', $ecole->id)
+                    ->where('matricule_edumaster', $s['matricule'])
+                    ->whereNotNull('matricule_edumaster')
+                    ->exists();
+
+                if ($exists) {
+                    $skippedCount++;
+                    continue; // Passe à l'élève suivant sans enregistrer
+                }
+
+                $photoPath = null;
+                if (!empty($s['photo']) && preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
+                    $data = base64_decode(substr($s['photo'], strpos($s['photo'], ',') + 1));
+                    $photoPath = 'eleves/photos/eleve_' . uniqid() . '.' . strtolower($type[1]);
+                    Storage::disk('public')->put($photoPath, $data);
+                }
+
+                // Génération QR
+                $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
+                $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
+                $qrFullPath = storage_path('app/public/' . $qrCodePath);
+
+                if (!file_exists(dirname($qrFullPath))) {
+                    mkdir(dirname($qrFullPath), 0755, true);
+                }
+
+                $qrCode = new QrCode($qrContent);
+                $writer = new PngWriter();
+                $result = $writer->write($qrCode);
+                $result->saveToFile($qrFullPath);
+
+                Eleve::create([
+                    'ecole_id' => $ecole->id,
+                    'classe_id' => $request->classe_id,
+                    'nom' => $s['nom'],
+                    'prenom' => $s['prenom'],
+                    'sexe' => $s['sexe'],
+                    'nationalite' => $s['nationalite'] ?? 'BENIN',
+                    'date_naissance' => $s['date_naissance'],
+                    'lieu_naissance' => $s['lieu_naissance'] ?? '',
+                    'telephone_tuteur' => $s['telephone_tuteur'] ?? '',
+                    'photo' => $photoPath,
+                    'matricule_edumaster' => $s['matricule'] ?? null,
+                    'qr_code' => $qrCodePath,
+                ]);
+
+                $createdCount++;
+            }
+
+            return [
+                'created' => $createdCount,
+                'skipped' => $skippedCount
+            ];
+        });
+
+        // LOGIQUE DE RÉPONSE INTUITIVE
+        if ($results['created'] === 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'enregistrement des élèves.',
-                'details' => $e->getMessage()
-            ], 500);
+                'status' => 'info',
+                'message' => 'Aucun élève n\'a été ajouté.',
+                'details' => "Les " . $results['skipped'] . " élèves présents dans ce fichier sont déjà enregistrés dans votre établissement avec ces matricules."
+            ]);
         }
+
+        if ($results['skipped'] > 0) {
+            return response()->json([
+                'success' => true,
+                'status' => 'partial',
+                'message' => 'Enregistrement partiel.',
+                'details' => $results['created'] . " nouveaux élèves ont été ajoutés. " . $results['skipped'] . " élèves ont été ignorés car ils existent déjà."
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => 'full',
+            'message' => 'Enregistrement réussi !',
+            'details' => "Tous les élèves (" . $results['created'] . ") ont été ajoutés avec succès."
+        ]);
+
+    } catch (Exception $e) {
+        Log::error('Erreur Store Import: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Une erreur est survenue lors de l\'enregistrement.',
+            'details' => $e->getMessage()
+        ], 500);
     }
+}
         
 }
