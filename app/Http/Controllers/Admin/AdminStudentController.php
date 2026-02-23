@@ -217,7 +217,7 @@ class AdminStudentController extends Controller
 
     public function exportCardPdf(Eleve $eleve)
     {
-        $eleve->load(['ecole', 'classe']);
+        $eleves = Eleve::with(['ecole.directeur', 'classe'])->get();
         $activeYear = \App\Models\SchoolYear::active()->first();
 
         $pdf = Pdf::loadView('admin.eleves.card.cards', compact('eleve', 'activeYear'))

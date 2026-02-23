@@ -26,11 +26,8 @@ class StudentImportController extends Controller
         ]);
     }
 
-
-
     public function preview(Request $request)
     {
-
         $user = auth()->user();
 
         //Vérification si l'utilisateur possède une école
@@ -39,18 +36,24 @@ class StudentImportController extends Controller
                 'error' => "Vous devez d'abord créer votre école avant d'importer des élèves."
             ], 403);
         }
-
         $request->validate([
             'document' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
         $spreadsheet = IOFactory::load($request->file('document')->getPathname());
         $worksheet = $spreadsheet->getActiveSheet();
-
-        // On utilise les index numériques pour plus de fiabilité
+        
         $highestRow = $worksheet->getHighestRow();
         $highestColumnLetter = $worksheet->getHighestColumn();
         $highestColumnIndex = Coordinate::columnIndexFromString($highestColumnLetter);
+
+        // 1. Vérification si le fichier est physiquement vide
+        if ($highestRow < 2) {
+            return response()->json([
+                'error' => 'Le fichier est vide.',
+                'details' => 'Le document ne contient aucune donnée à importer.'
+            ], 422);
+        }
 
         $images = $this->extractImagesFromExcel($worksheet);
 
@@ -60,38 +63,33 @@ class StudentImportController extends Controller
             'matricule'   => ['n° table', 'numero de table', 'matricule', 'identifiant'],
             'sexe'        => ['sexe', 'genre', 'sex'],
             'date_lieu'   => ['date/lieu', 'date et lieu', 'date & lieu', 'date/lieu naissance'],
-            'prenom'      => ['prenom', 'prenoms', 'prénom'], // On cherche prénom AVANT nom
+            'prenom'      => ['prenom', 'prenoms', 'prénom'],
             'nom'         => ['nom', 'candidat'],
-            'date_naiss'  => ['date de naissance', 'né le', 'date naiss'],
-            'lieu_naiss'  => ['lieu de naissance', 'lieu naiss'],
-            'telephone'   => ['telephone', 'parent', 'contact', 'tuteur', 'téléphone'],
+            'date_naiss'  => ['date de naissance','date naissance', 'né le', 'date naiss', 'date'],
+            'lieu_naiss'  => ['lieu de naissance', 'lieu naissance', 'lieu naiss', 'lieu' ],
+            'telephone'   => ['telephone', 'parent', 'contact', 'tuteur', 'téléphone','tel', 'tél'],
             'nationalite' => ['nationalité', 'nation', 'pays'],
         ];
 
         $indices = [];
         $headerRow = null;
 
-        // 1. DETECTION DE L'ENTETE
+        // 2. DETECTION DE L'ENTETE
         for ($row = 1; $row <= 15; $row++) {
             $rowIndices = [];
             $matchCount = 0;
-
+            
             for ($col = 1; $col <= $highestColumnIndex; $col++) {
                 $colLetter = Coordinate::stringFromColumnIndex($col);
                 $cellValue = $worksheet->getCell($colLetter . $row)->getValue();
                 $val = strtolower(Str::ascii(trim((string)$cellValue)));
-
+                
                 if (empty($val) || $val === 'n°' || $val === 'no') continue;
 
                 foreach ($mappingRules as $field => $synonyms) {
                     foreach ($synonyms as $synonym) {
-                        // Match logique
                         if ($val === $synonym || str_contains($val, $synonym)) {
-
-                            // --- SECURITÉ CRUCIALE ---
-                            // Si on trouve "nom" mais que c'est un "prénom", on ignore pour le champ 'nom'
                             if ($field === 'nom' && str_contains($val, 'prenom')) continue;
-
                             if (!isset($rowIndices[$field])) {
                                 $rowIndices[$field] = $colLetter;
                                 $matchCount++;
@@ -110,20 +108,22 @@ class StudentImportController extends Controller
         }
 
         if (!$headerRow) {
-            return response()->json(['error' => 'Impossible de détecter les colonnes. Vérifiez les titres.'], 422);
+            return response()->json([
+                'error' => 'Colonnes non détectées.',
+                'details' => 'Assurez-vous que votre fichier contient des en-têtes clairs (Nom, Prénom, Sexe, etc.).'
+            ], 422);
         }
 
         $students = [];
         for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
-
-            $getVal = function ($field) use ($worksheet, $indices, $row) {
+            
+            $getVal = function($field) use ($worksheet, $indices, $row) {
                 return isset($indices[$field]) ? trim((string)$worksheet->getCell($indices[$field] . $row)->getValue()) : '';
             };
 
-            // NOM / PRENOM
             $nom = "";
             $prenom = "";
-
+            
             if (isset($indices['nom_prenom'])) {
                 $full = $getVal('nom_prenom');
                 $parts = explode(' ', $full, 2);
@@ -136,8 +136,7 @@ class StudentImportController extends Controller
 
             if (empty($nom) || is_numeric($nom)) continue;
 
-            // DATE / LIEU
-            $dateNaiss = null;
+            $dateNaiss = null; 
             $lieuNaiss = "";
             if (isset($indices['date_lieu'])) {
                 $raw = $getVal('date_lieu');
@@ -150,19 +149,17 @@ class StudentImportController extends Controller
                 $lieuNaiss = $getVal('lieu_naiss');
             }
 
-            // SEXE
             $s = strtoupper(Str::ascii($getVal('sexe')));
             $sexe = (str_starts_with($s, 'F') || str_contains($s, 'FEM')) ? 'F' : 'M';
 
-            // MATRICULE
             $matricule = $getVal('matricule');
             if (empty($matricule) || strlen($matricule) < 3) {
                 $matricule = "ID-" . strtoupper(substr(Str::slug($nom), 0, 3)) . "-" . $row;
             }
 
             $students[] = [
-                'photo'            => $images[$row] ?? null,
-                'matricule'        => $matricule,
+                'photo'            => $images[$row] ?? null, 
+                'matricule'        => $matricule, 
                 'nom'              => strtoupper($nom),
                 'prenom'           => ucwords(strtolower($prenom)),
                 'sexe'             => $sexe,
@@ -173,14 +170,21 @@ class StudentImportController extends Controller
             ];
         }
 
+        if (empty($students)) {
+            return response()->json([
+                'error' => 'Aucune donnée d\'élève trouvée.',
+                'details' => 'Le fichier contient des en-têtes mais aucune ligne d\'élève valide n\'a été détectée en dessous.'
+            ], 422);
+        }
+
         return response()->json(['students' => $students]);
     }
+
 
     private function extractImagesFromExcel($worksheet)
     {
         $images = [];
         foreach ($worksheet->getDrawingCollection() as $drawing) {
-            // On récupère la ligne à partir des coordonnées (ex: B4 -> 4)
             $coordinates = $drawing->getCoordinates();
             if (preg_match('/(\d+)/', $coordinates, $matches)) {
                 $rowNumber = (int)$matches[1];
@@ -193,20 +197,16 @@ class StudentImportController extends Controller
                     $contents = ob_get_clean();
                     $mime = $drawing->getMimeType();
                 } else {
-                    // Pour les fichiers standard (Drawing)
                     $path = $drawing->getPath();
                     if (file_exists($path)) {
                         $contents = file_get_contents($path);
                     } else {
-                        // Si le chemin est relatif à l'archive Excel
                         $zipReader = fopen($path, 'r');
                         if ($zipReader) {
                             $contents = stream_get_contents($zipReader);
                             fclose($zipReader);
                         }
                     }
-
-                    // Détecter le mime type si possible
                     if ($contents) {
                         $finfo = new \finfo(FILEINFO_MIME_TYPE);
                         $mime = $finfo->buffer($contents);
@@ -219,9 +219,7 @@ class StudentImportController extends Controller
             }
         }
         return $images;
-    } //end extractImagesFromExcel
-
-
+    }
 
     private function formatExcelDate($value)
     {
@@ -233,9 +231,7 @@ class StudentImportController extends Controller
         } catch (\Exception $e) {
             return null;
         }
-    } //end formatExcelDate
-
-
+    }
 
     public function storeAll(Request $request)
     {
@@ -249,12 +245,10 @@ class StudentImportController extends Controller
 
         DB::transaction(function () use ($request, $ecole) {
             foreach ($request->students as $index => $s) {
-                // Validation minimale (Nom/Prénom/Sexe/Date sont critiques)
                 if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
                     throw new \Exception("Données critiques manquantes ligne " . ($index + 1));
                 }
 
-                // Si matricule présent, on vérifie les doublons
                 if (!empty($s['matricule']) && Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
                     continue;
                 }
@@ -266,11 +260,8 @@ class StudentImportController extends Controller
                     Storage::disk('public')->put($photoPath, $data);
                 }
 
-                // Génération QR Code uniquement si matricule existe, sinon on utilise le nom
                 $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
-
-                // (Logique de sauvegarde QR Code ici...)
 
                 Eleve::create([
                     'ecole_id' => $ecole->id,
@@ -290,5 +281,5 @@ class StudentImportController extends Controller
         });
 
         return response()->json(['success' => true]);
-    } //end storeAll
+    }
 }

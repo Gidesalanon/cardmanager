@@ -94,7 +94,7 @@
                     </svg>
                 </button>
             </div>
-            <a href="{{ route('admin.profile.edit') }}" class="user-menu" style="text-decoration: none;">
+            <a href="" class="user-menu" style="text-decoration: none;">
                 <div class="user-avatar">
                     @if (auth()->user()->avatar)
                         <img src="{{ asset('storage/' . auth()->user()->avatar) }}"

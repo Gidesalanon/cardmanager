@@ -49,6 +49,7 @@
             width: 25mm;
         }
 
+
         .school-top-name {
             font-size: 6.5pt;
             font-weight: 900;
@@ -57,6 +58,18 @@
         .school-top-tel {
             font-size: 5pt;
             color: #333;
+        }
+
+
+        .school-top-name {
+            font-size: 6.5pt;
+            font-weight: 900;
+        }
+
+        .school-top-tel {
+            font-size: 5pt;
+            color: #333;
+            margin-top: 2px
         }
 
         .table-box {
@@ -68,9 +81,20 @@
             text-align: center;
         }
 
+        border: 0.15mm solid #000;
+        padding: 0.5mm 1.5mm;
+        text-align: center;
+        }
+
         .table-label {
             font-size: 5.5pt;
             font-weight: bold;
+        }
+
+
+        .table-label {
+            min-width: 70px;
+            min-height: 7px
         }
 
         /* Titre Modifié : Taille réduite et nom changé */
@@ -113,9 +137,23 @@
             vertical-align: top;
         }
 
+
         .label {
             font-weight: bold;
             width: 16mm;
+        }
+
+
+        .label {
+            font-weight: bold;
+            width: 16mm;
+            font-size: 10px
+        }
+
+        .label-sign {
+            font-weight: bold;
+            width: 90mm;
+            font-size: 8px
         }
 
         .sig-apprenant-box {
@@ -139,6 +177,53 @@
         }
 
         /* --- ÉLÉMENTS DU VERSO --- */
+
+        .verso-container {
+            text-align: center;
+            padding-top: 8mm;
+        }
+
+        .verso-school {
+            font-size: 16pt;
+            font-weight: 900;
+            margin-bottom: 1mm;
+        }
+
+        .verso-year {
+            font-size: 10pt;
+            font-weight: bold;
+        }
+
+        .qr-code {
+            width: 23mm;
+            height: 23mm;
+            margin-top: 2mm;
+        }
+
+        .verso-signature-area {
+            position: absolute;
+            bottom: 7mm;
+            right: 10mm;
+            text-align: right;
+        }
+
+        .dir-label {
+            font-size: 9pt;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .credit-vertical {
+            position: absolute;
+            left: 1mm;
+            bottom: 15mm;
+            transform: rotate(-90deg);
+            transform-origin: left bottom;
+            font-size: 5pt;
+            font-weight: bold;
+            color: #444;
+        }
+
         .verso-photo {
             width: 85.6mm;
             height: 54mm;
@@ -225,28 +310,35 @@
 
         .flag-bar {
             position: absolute;
-            width: 100%;
-            height: 1.5mm;
-            display: table;
-        }
 
-        .flag-bar div {
-            display: table-cell;
-            width: 33.33%;
-            height: 1%;
-        }
+            .flag-bar {
+                position: absolute;
+                bottom: 0px;
+                left: 0;
+                right: 0;
 
-        .green {
-            background: #008751;
-        }
+                width: 100%;
+                height: 1.5mm;
+                display: table;
+            }
 
-        .yellow {
-            background: #fcd116;
-        }
+            .flag-bar div {
+                display: table-cell;
+                width: 33.33%;
+                height: 1%;
+            }
 
-        .red {
-            background: #e8112d;
-        }
+            .green {
+                background: #008751;
+            }
+
+            .yellow {
+                background: #fcd116;
+            }
+
+            .red {
+                background: #e8112d;
+            }
     </style>
 </head>
 
@@ -297,15 +389,33 @@
                     <td>: {{ $eleve->telephone_tuteur }}</td>
                 </tr>
             </table>
+
         </div>
         <div class="sig-apprenant-box">Signature de l'apprenant</div>
         <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
-        <div class="flag-bar" style="bottom: 0;">
-            <div class="green"></div>
-            <div class="yellow"></div>
-            <div class="red"></div>
+
+        <div class="label-sign">Signature de l'apprenant</div>
+        <div class="sig-apprenant-box">
+
         </div>
     </div>
+
+
+    <div class="sig-apprenant-box">Signature de l'apprenant</div>
+
+
+
+
+    <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
+
+
+    <div class="flag-bar" style="bottom: 0;">
+        <div class="green"></div>
+        <div class="yellow"></div>
+        <div class="red"></div>
+    </div>
+    </div>
+
     {{-- ================= Verso ================= --}}
     <div class="memp-card verso-photo">
 
@@ -351,6 +461,82 @@
             Réal: DONAMI CHRIST TEL: 97 22 48 87
         </div>
 
+    </div>
+
+
+    {{-- <!-- FACE VERSO -->
+    <div class="card">
+        <div class="flag-bar" style="top: 0;">
+            <div class="green"></div><div class="yellow"></div><div class="red"></div>
+        </div>
+
+        <div class="verso-container">
+            <div class="credit-vertical">Réal: DONAMI-CHRIST TEL: 97 22 48 87</div>
+
+            <h2 class="verso-school">{{ strtoupper($eleve->ecole->nom_ecole ?? 'ECOLE') }}</h2>
+            <div class="verso-year">ANNEE SCOLAIRE {{ $activeYear->nom ?? '' }}</div>
+
+            <img src="{{ public_path('storage/'.$eleve->qr_code) }}" class="qr-code">
+
+            <div class="verso-signature-area">
+                <span class="dir-label">La Directrice</span>
+                <div style="height: 10mm;"></div>
+            </div>
+        </div>
+
+        <div class="flag-bar" style="bottom: 0;">
+            <div class="green"></div><div class="yellow"></div><div class="red"></div>
+        </div>
+    </div> --}}
+
+
+    <!-- Nom établissement -->
+    <div class="school-name">
+        {{ strtoupper($eleve->ecole->nom_ecole ?? '') }}
+    </div>
+
+    <!-- Année scolaire -->
+    <div class="school-year">
+        ANNEE SCOLAIRE {{ $activeYear->label ?? '' }}
+    </div>
+
+    <!-- Zone centrale -->
+    <div class="center-zone">
+
+        <!-- QR à gauche -->
+        <div class="qr-left">
+            <img src="{{ public_path('storage/' . $eleve->qr_code) }}" alt="QR">
+        </div>
+
+        <!-- Cachet + signature -->
+        <div class="stamp-signature">
+            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
+        </div>
+
+        <div class="stamp-cachet">
+            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
+        </div>
+
+    </div>
+
+    <!-- Nom Directrice -->
+    <div class="director-name">
+        <span style="margin-bottom: 3px">Le Directeur <br></span>
+        {{ $eleve->ecole->directeur->prenom }}
+        {{ strtoupper($eleve->ecole->directeur->nom ?? 'DIRECTEUR') }}
+    </div>
+
+    <!-- Réalisation -->
+    <div class="footer-real">
+        Réal: DONAMI CHRIST TEL: 97 22 48 87
+    </div>
+
+    <!-- Bande tricolore -->
+    <div class="flag-bar" style="bottom: 0;">
+        <div class="green"></div>
+        <div class="yellow"></div>
+        <div class="red"></div>
+    </div>
     </div>
 </body>
 

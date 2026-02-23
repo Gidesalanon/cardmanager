@@ -48,6 +48,7 @@
             line-height: 1;
             width: 25mm;
         }
+<<<<<<<< HEAD:resources/views/admin/eleves/card/cardsds.blade.php
 
         .school-top-name {
             font-size: 6.5pt;
@@ -59,20 +60,31 @@
             color: #333;
         }
 
+========
+        .school-top-name { font-size: 6.5pt; font-weight: 900; }
+        .school-top-tel { font-size: 5pt; color: #333; margin-top: 2px}
+>>>>>>>> b9a6c0ca05c9ec07592a00b731b60264f8acd94b:resources/views/admin/eleves/card/cards.blade.php
         .table-box {
             position: absolute;
             top: 7mm;
             right: 2mm;
-            border: 0.25mm solid #000;
+            border: 0.15mm solid #000;
             padding: 0.5mm 1.5mm;
             text-align: center;
         }
+<<<<<<<< HEAD:resources/views/admin/eleves/card/cardsds.blade.php
 
         .table-label {
             font-size: 5.5pt;
             font-weight: bold;
         }
 
+========
+        .table-label {
+            min-width: 70px;
+            min-height: 7px
+        }
+>>>>>>>> b9a6c0ca05c9ec07592a00b731b60264f8acd94b:resources/views/admin/eleves/card/cards.blade.php
         /* Titre Modifié : Taille réduite et nom changé */
         .card-title {
             position: absolute;
@@ -112,12 +124,17 @@
             padding-bottom: 0.6mm;
             vertical-align: top;
         }
+<<<<<<<< HEAD:resources/views/admin/eleves/card/cardsds.blade.php
 
         .label {
             font-weight: bold;
             width: 16mm;
         }
 
+========
+        .label { font-weight: bold; width: 16mm; font-size: 10px }
+        .label-sign { font-weight: bold; width: 90mm; font-size: 8px }
+>>>>>>>> b9a6c0ca05c9ec07592a00b731b60264f8acd94b:resources/views/admin/eleves/card/cards.blade.php
         .sig-apprenant-box {
             position: absolute;
             bottom: 6mm;
@@ -139,6 +156,7 @@
         }
 
         /* --- ÉLÉMENTS DU VERSO --- */
+<<<<<<<< HEAD:resources/views/admin/eleves/card/cardsds.blade.php
         .verso-container {
             text-align: center;
             padding-top: 8mm;
@@ -185,8 +203,88 @@
             color: #444;
         }
 
+========
+        .verso-photo {
+            width: 85.6mm;
+            height: 54mm;
+            position: relative;
+            overflow: hidden;
+            background-color: white;
+            /* padding: 3px; */
+}
+
+/* Nom école */
+.school-name {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: #020202;
+    letter-spacing: 1px;
+    padding-top: 10px;
+}
+
+/* Année */
+.school-year {
+    text-align: center;
+    font-size: 8px;
+    margin-top: 3px;
+    color: #000000;
+}
+
+/* Zone centrale */
+.center-zone {
+        text-align: center; /* Centre le contenu inline */
+        width: 100%;
+        margin-top: 20px;
+    }
+
+    .qr-left, .stamp-signature, .stamp-cachet {
+        display: inline-block;
+        vertical-align: middle; /* Aligne les images entre elles par le milieu */
+        /* margin: 0 20px;        Espacement horizontal */
+    }
+
+    .center-zone img {
+        max-width: 90px;
+        height: auto;
+    }
+
+
+/* Label directrice */
+.director-label {
+    font-weight: bold;
+    margin-top: 5px;
+    color: #444;
+}
+
+/* Signature */
+.signature-img {
+    width: 150px;
+    margin-top: -20px;
+}
+
+/* Nom directrice */
+.director-name {
+    text-align: center;
+    font-weight: 700;
+    font-size: 12px;
+    margin-top: 5px;
+    color: #050505;
+}
+
+/* Footer */
+.footer-real {
+    position: relative;
+    text-align: center;
+    font-size: 10px;
+    color: #000000;
+}
+>>>>>>>> b9a6c0ca05c9ec07592a00b731b60264f8acd94b:resources/views/admin/eleves/card/cards.blade.php
         .flag-bar {
-            position: absolute;
+             position: absolute;
+            bottom: 0px;
+    left: 0;
+    right: 0;  
             width: 100%;
             height: 1.5mm;
             display: table;
@@ -235,7 +333,7 @@
         </div>
 
         <div class="table-box">
-            <div class="table-label">Numero de table</div>
+            <div class="table-label"></div>
         </div>
 
         <!-- Titre mis à jour : Carte d'identité scolaire -->
@@ -266,10 +364,18 @@
                     <td>: {{ $eleve->telephone_tuteur }}</td>
                 </tr>
             </table>
+            <div class="label-sign">Signature de l'apprenant</div>
+            <div class="sig-apprenant-box">
+                
+            </div>
         </div>
+<<<<<<<< HEAD:resources/views/admin/eleves/card/cardsds.blade.php
 
         <div class="sig-apprenant-box">Signature de l'apprenant</div>
 
+========
+        
+>>>>>>>> b9a6c0ca05c9ec07592a00b731b60264f8acd94b:resources/views/admin/eleves/card/cards.blade.php
         <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
 
         <div class="flag-bar" style="bottom: 0;">
@@ -304,6 +410,55 @@
         </div>
     </div> --}}
 
+<<<<<<<< HEAD:resources/views/admin/eleves/card/cardsds.blade.php
+========
+    <!-- Nom établissement -->
+    <div class="school-name">
+        {{ strtoupper($eleve->ecole->nom_ecole ?? '') }}
+    </div>
+
+    <!-- Année scolaire -->
+    <div class="school-year">
+        ANNEE SCOLAIRE {{ $activeYear->label ?? '' }}
+    </div>
+
+    <!-- Zone centrale -->
+    <div class="center-zone">
+
+        <!-- QR à gauche -->
+        <div class="qr-left">
+            <img src="{{ public_path('storage/' . $eleve->qr_code) }}" alt="QR">
+        </div>
+
+        <!-- Cachet + signature -->
+        <div class="stamp-signature">
+            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
+        </div>
+
+        <div class="stamp-cachet">
+            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
+        </div>
+
+    </div>
+
+    <!-- Nom Directrice -->
+    <div class="director-name">
+        <span style="margin-bottom: 3px">Le Directeur <br></span>
+        {{ $eleve->ecole->directeur->prenom }} 
+        {{ strtoupper($eleve->ecole->directeur->nom ?? 'DIRECTEUR') }}
+    </div>
+
+    <!-- Réalisation -->
+    <div class="footer-real">
+        Réal: DONAMI CHRIST TEL: 97 22 48 87
+    </div>
+
+    <!-- Bande tricolore -->
+    <div class="flag-bar" style="bottom: 0;">
+            <div class="green"></div><div class="yellow"></div><div class="red"></div>
+    </div>
+</div>
+>>>>>>>> b9a6c0ca05c9ec07592a00b731b60264f8acd94b:resources/views/admin/eleves/card/cards.blade.php
 </body>
 
 </html>
