@@ -64,7 +64,7 @@
             position: absolute;
             top: 7mm;
             right: 2mm;
-            border: 0.15mm solid #000;
+            border: 0.4mm solid #000;
             padding: 0.5mm 1.5mm;
             text-align: center;
         }
@@ -81,9 +81,17 @@
             width: 100%;
             text-align: center;
             color: #e8112d;
-            font-size: 8.5pt;
+            font-size: 7pt;
             /* Taille réduite */
             font-weight: 900;
+        }
+
+        .qrannee img {
+            max-width: 40px;
+            height: auto;
+            float: right;
+            margin-top: 45px;
+            margin-right: 7px;
         }
 
         .photo {
@@ -109,7 +117,7 @@
         }
 
         .info-table td {
-            font-size: 8.5pt;
+            font-size: 10px;
             padding-bottom: 0.6mm;
             vertical-align: top;
         }
@@ -142,7 +150,7 @@
             position: absolute;
             bottom: 2.2mm;
             left: 3.5mm;
-            font-size: 8.5pt;
+            font-size: 7pt;
             font-weight: bold;
         }
 
@@ -159,8 +167,8 @@
         /* Nom école */
         .school-name {
             text-align: center;
-            font-size: 10px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: bold;
             color: #020202;
             letter-spacing: 1px;
             padding-top: 10px;
@@ -182,17 +190,15 @@
             margin-top: 20px;
         }
 
-        .qr-left,
         .stamp-signature,
         .stamp-cachet {
             display: inline-block;
             vertical-align: middle;
-            /* Aligne les images entre elles par le milieu */
-            /* margin: 0 20px;        Espacement horizontal */
+            margin: 0 20px;        /*Espacement horizontal*/
         }
 
         .center-zone img {
-            max-width: 90px;
+            max-width: 100px;
             height: auto;
         }
 
@@ -224,6 +230,7 @@
             text-align: center;
             font-size: 10px;
             color: #000000;
+            margin-top: 5px;
         }
 
         .flag-bar {
@@ -277,8 +284,14 @@
         <div class="table-box">
             <div class="table-label"></div>
         </div>
-        <!-- Titre mis à jour : Carte d'identité scolaire -->
-        <div class="card-title">CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->nom ?? '2025-2026' }}</div>
+        <!-- Titre mis à jour : Carte d'identité scolaire et QR -->
+        <div class="qrannee">
+            <div class="card-title">CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}</div>
+            <div class="qr-left">
+                <img src="{{ public_path('storage/' . $eleve->qr_code) }}" alt="QR">
+            </div>
+        </div>
+        
         <img src="{{ public_path('storage/' . $eleve->photo) }}" class="photo">
         <div class="info-container">
             <table class="info-table">
@@ -328,10 +341,6 @@
         </div>
         <!-- Zone centrale -->
         <div class="center-zone">
-            <!-- QR à gauche -->
-            <div class="qr-left">
-                <img src="{{ public_path('storage/' . $eleve->qr_code) }}" alt="QR">
-            </div>
             <!-- Cachet + signature -->
             <div class="stamp-signature">
                 <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) ?? 'signature' }}"
@@ -343,19 +352,26 @@
         </div>
         <!-- Nom Directrice -->
         <div class="director-name">
-            <span style="margin-bottom: 3px">Le Directeur <br></span>
-            {{ $eleve->ecole->directeur->prenom }}
-            {{ strtoupper($eleve->ecole->directeur->nom ?? 'DIRECTEUR') }}
+            <span>
+                @if($eleve->ecole->directeur->sexe == 'F')
+                    La Directrice
+                @else
+                    Le Directeur
+                @endif
+                <br>
+            </span>
+            {{ $eleve->ecole->directeur->prenom }} 
+            {{ strtoupper($eleve->ecole->directeur->nom ?? '') }}
         </div>
+
         <!-- Réalisation -->
         <div class="footer-real">
             Réal: DONAMI-CHRIST - TEL: 97 22 48 87
         </div>
+
         <!-- Bande tricolore -->
         <div class="flag-bar" style="bottom: 0;">
-            <div class="green"></div>
-            <div class="yellow"></div>
-            <div class="red"></div>
+            <div class="green"></div><div class="yellow"></div><div class="red"></div>
         </div>
     </div>
 </body>

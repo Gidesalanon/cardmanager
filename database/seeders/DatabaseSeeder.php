@@ -14,14 +14,15 @@ class DatabaseSeeder extends Seeder
      * Seed the application's database.
      */
     public function run(): void
-{
-    $this->call([
-        SectionSeeder::class,
-        SerieSeeder::class,
-        ClasseSeeder::class,
-        PartitionSeeder::class,
-        AdminSeeder::class,
-    ]);
-}
+    {
+        $this->call([
+            SectionSeeder::class,
+            SerieSeeder::class,
+            ClasseSeeder::class,
+            PartitionSeeder::class,
+            AdminSeeder::class,
+            TestEcoleSeeder::class,
+        ]);
+    }
 
 }
