@@ -63,7 +63,7 @@ class StudentImportController extends Controller
         $mappingRules = [
             'nom_prenom'  => ['nom et prenoms', 'nom & prenoms', 'nom prenoms', 'nom et prenom'],
             'matricule'   => ['n° table', 'numero de table', 'matricule', 'identifiant'],
-            'sexe'        => ['sexe', 'genre', 'm/f', 'gender'], // Supprimé 's' qui cause le problème
+            'sexe'        => ['sexe', 'genre', 'm/f', 'gender'], 
             'date_lieu'   => ['date/lieu', 'date et lieu', 'date & lieu', 'date/lieu naissance'],
             'prenom'      => ['prenom', 'prenoms', 'prénom', 'prenom(s)'],
             'nom'         => ['nom', 'candidat'],
