@@ -12,10 +12,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use Illuminate\Support\Facades\Log;
 
 class StudentImportController extends Controller
 {
@@ -74,15 +77,15 @@ class StudentImportController extends Controller
         $headerRow = null;
         $usedColumns = []; // Pour tracker les colonnes déjà assignées
 
-        \Log::info('=== IMPORT DEBUG START ===');
-        \Log::info('Highest Row: ' . $highestRow . ' | Highest Col: ' . $highestColumnLetter);
+        Log::info('=== IMPORT DEBUG START ===');
+        Log::info('Highest Row: ' . $highestRow . ' | Highest Col: ' . $highestColumnLetter);
 
         for ($row = 1; $row <= 15; $row++) {
             $rowIndices = [];
             $matchCount = 0;
             $usedColumns = []; // Réinitialiser pour chaque ligne
 
-            \Log::info("--- Scan row $row pour header ---");
+            Log::info("--- Scan row $row pour header ---");
 
             for ($col = 1; $col <= $highestColumnIndex; $col++) {
                 $colLetter = Coordinate::stringFromColumnIndex($col);
@@ -91,7 +94,7 @@ class StudentImportController extends Controller
 
                 if (empty($val) || $val === 'n°' || $val === 'no') continue;
 
-                \Log::info("  Col $colLetter: raw='$cellValue' | normalized='$val'");
+                Log::info("  Col $colLetter: raw='$cellValue' | normalized='$val'");
 
                 foreach ($mappingRules as $field => $synonyms) {
                     foreach ($synonyms as $synonym) {
@@ -112,7 +115,7 @@ class StudentImportController extends Controller
                                 $rowIndices[$field] = $colLetter;
                                 $usedColumns[] = $colLetter;
                                 $matchCount++;
-                                \Log::info("  => MATCH: field='$field' col='$colLetter' synonym='$synonym'");
+                                Log::info("  => MATCH: field='$field' col='$colLetter' synonym='$synonym'");
                             }
                             break;
                         }
@@ -120,7 +123,7 @@ class StudentImportController extends Controller
                 }
             }
 
-            \Log::info("Row $row: matchCount=$matchCount | indices=" . json_encode($rowIndices));
+            Log::info("Row $row: matchCount=$matchCount | indices=" . json_encode($rowIndices));
 
             if ($matchCount >= 3) {
                 $indices = $rowIndices;
@@ -129,8 +132,8 @@ class StudentImportController extends Controller
             }
         }
 
-        \Log::info('Header row final: ' . ($headerRow ?? 'NON DÉTECTÉ'));
-        \Log::info('Indices finaux: ' . json_encode($indices));
+        Log::info('Header row final: ' . ($headerRow ?? 'NON DÉTECTÉ'));
+        Log::info('Indices finaux: ' . json_encode($indices));
 
         if (!$headerRow) {
             return response()->json([
@@ -310,8 +313,20 @@ class StudentImportController extends Controller
                     Storage::disk('public')->put($photoPath, $data);
                 }
 
+
+                // Génération QR
                 $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
+                $qrFullPath = storage_path('app/public/' . $qrCodePath);
+
+                if (!file_exists(dirname($qrFullPath))) {
+                    mkdir(dirname($qrFullPath), 0755, true);
+                }
+
+                $qrCode = new QrCode($qrContent);
+                $writer = new PngWriter();
+                $result = $writer->write($qrCode);
+                $result->saveToFile($qrFullPath);
 
                 Eleve::create([
                     'ecole_id' => $ecole->id,

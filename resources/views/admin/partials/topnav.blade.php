@@ -58,19 +58,6 @@
                     </a>
                 </div>
 
-
-                {{-- <div class="nav-item">
-                    <a href="{{ route('admin.profile.edit') }}" class="user-menu">
-                        <div class="user-avatar">
-                            @if (auth()->user()->avatar)
-                                <img src="{{ asset('storage/' . auth()->user()->avatar) }}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                            @else
-                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                            @endif
-                        </div>
-                        <span class="user-name">{{ auth()->user()->name }}</span>
-                    </a>
-                    </div> --}}
             </div>
         </div>
         <div class="nav-right">
@@ -94,17 +81,19 @@
                     </svg>
                 </button>
             </div>
-            <a href="" class="user-menu" style="text-decoration: none;">
-                <div class="user-avatar">
-                    @if (auth()->user()->avatar)
-                        <img src="{{ asset('storage/' . auth()->user()->avatar) }}"
-                            style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                    @else
-                        {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
-                    @endif
-                </div>
-                <span class="user-name">{{ auth()->user()->name ?? 'Admin' }}</span>
-            </a>
+            <div class="nav-item">
+                <a href="{{ route('admin.profile.edit') }}" class="user-menu">
+                    <div class="user-avatar">
+                        @if (auth()->user()->avatar)
+                            <img src="{{ asset('storage/' . auth()->user()->avatar) }}"
+                                style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                        @else
+                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        @endif
+                    </div>
+                    <span class="user-name">{{ auth()->user()->name }}</span>
+                </a>
+            </div>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="btn-logout" title="Déconnexion">
