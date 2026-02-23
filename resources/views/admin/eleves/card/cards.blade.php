@@ -293,9 +293,16 @@
 
     <!-- Nom Directrice -->
     <div class="director-name">
-        <span style="margin-bottom: 3px">Le Directeur <br></span>
+        <span>
+        @if($eleve->ecole->directeur->sexe == 'F')
+            La Directrice
+        @else
+            Le Directeur
+        @endif
+        <br>
+    </span>
         {{ $eleve->ecole->directeur->prenom }} 
-        {{ strtoupper($eleve->ecole->directeur->nom ?? 'DIRECTEUR') }}
+        {{ strtoupper($eleve->ecole->directeur->nom ?? '') }}
     </div>
 
     <!-- Réalisation -->
