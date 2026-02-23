@@ -156,6 +156,11 @@
             <li>Chaque élève devra avoir une photo avant l’enregistrement.</li>
         </ul>
     </div>
+    <div style="text-align: center;">
+        <p style="margin-bottom: 8px; font-size: 13px; color: #6b7280;">Besoin d'aide pour le format ?</p>
+        <a href="{{ route('school.eleves.import.canvas') }}" class="import-btn" style="background: #ffffff; border: 1px solid #d1d5db; color: #374151; text-decoration: none;">
+            📥 Télécharger le canevas (.xlsx)
+        </a>
 
     <!-- PREVIEW TABLE -->
     <div x-show="students.length > 0" x-cloak class="card mt-6 fade-in" style="grid-column:1/-1">
@@ -293,7 +298,7 @@
                     });
                     const d = await r.json();
                     if (!r.ok) {
-                        this.showError(d.error || 'Erreur', d.details || 'Fichier invalide');
+                        this.showError(d.error || 'Erreur', d.details);
                         this.loading = false; this.progress = 0; return;
                     }
                     this.students = d.students ?? [];

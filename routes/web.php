@@ -100,7 +100,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
         Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
         Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
-
+        Route::get('/school/eleves/import/canvas', [StudentImportController::class, 'downloadCanvas'])->name('school.eleves.import.canvas');
         // GESTION ÉLÈVES
         Route::resource('eleves', StudentController::class)->parameters(['eleves' => 'eleve'])->names('students');
 
