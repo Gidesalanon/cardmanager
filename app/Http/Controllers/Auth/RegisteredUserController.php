@@ -19,11 +19,26 @@ class RegisteredUserController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', 'min:8'],
         ]);
+
+        if ($validator->fails()) {
+            // Si requête AJAX, retourner les erreurs en JSON
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
+            // Sinon, comportement normal avec redirection
+            return redirect()->route('register')
+                ->withErrors($validator)
+                ->withInput();
+        }
 
         $user = User::create([
             'name' => $request->name,
@@ -36,7 +51,17 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect()->route('verification.notice');
+        // Si requête AJAX, retourner JSON
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Compte créé avec succès !'
+            ]);
+        }
 
+        // Sinon, comportement normal (redirection)
+        // Message de succès avant la redirection
+        session()->flash('success', 'Compte créé avec succès ! Bienvenue sur CardManager.');
+        return redirect()->route('verification.notice');
     }
 }

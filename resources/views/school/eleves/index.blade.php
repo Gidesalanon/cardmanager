@@ -101,7 +101,7 @@
                             <a href="{{ route('school.students.edit', $eleve) }}"
                                class="circle-btn circle-edit"
                                title="Modifier">
-                                ✏
+                                <i class="fa-solid fa-pen"></i>
                             </a>
 
                             {{-- Formulaire de suppression avec ID unique --}}
@@ -118,7 +118,7 @@
                                     onclick="confirmDelete({{ $eleve->id }}, '{{ addslashes($eleve->nom . ' ' . $eleve->prenom) }}')"
                                     class="circle-btn circle-delete"
                                     title="Supprimer">
-                                🗑
+                                <i class="fa-solid fa-trash"></i>
                             </button>
                         </td>
                     </tr>
