@@ -528,7 +528,7 @@
 
     <!-- Réalisation -->
     <div class="footer-real">
-        Réal: DONAMI CHRIST TEL: 97 22 48 87
+        Réal: DONAMI-CHRIST - TEL: 97 22 48 87
     </div>
 
     <!-- Bande tricolore -->
