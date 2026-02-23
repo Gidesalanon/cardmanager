@@ -7,18 +7,19 @@ use App\Models\Classe;
 use App\Models\Eleve;
 use App\Models\SchoolYear;
 use Carbon\Carbon;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\Writer\PngWriter;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use Illuminate\Support\Facades\Log;
 
 class StudentImportController extends Controller
 {
@@ -43,8 +44,8 @@ class StudentImportController extends Controller
         $request->validate([
             'document' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
-
-        $spreadsheet = IOFactory::load($request->file('document')->getPathname());
+        try {
+            $spreadsheet = IOFactory::load($request->file('document')->getPathname());
         $worksheet = $spreadsheet->getActiveSheet();
 
         $highestRow = $worksheet->getHighestRow();
@@ -229,8 +230,17 @@ class StudentImportController extends Controller
         }
 
         return response()->json(['students' => $students]);
-    }
 
+        } catch (Exception $e) {
+            Log::error('Erreur Store Import: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'enregistrement des élèves.',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+        
 
     private function extractImagesFromExcel($worksheet)
     {
@@ -295,56 +305,66 @@ class StudentImportController extends Controller
 
         $ecole = Auth::user()->ecole;
         abort_if(!$ecole, 403);
-
-        DB::transaction(function () use ($request, $ecole) {
-            foreach ($request->students as $index => $s) {
-                if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
-                    throw new \Exception("Données critiques manquantes ligne " . ($index + 1));
+        try {
+                DB::transaction(function () use ($request, $ecole) {
+                foreach ($request->students as $index => $s) {
+                    if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
+                        throw new \Exception("Données critiques manquantes ligne " . ($index + 1));
+                    }
+    
+                    if (!empty($s['matricule']) && Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
+                        continue;
+                    }
+    
+                    $photoPath = null;
+                    if (!empty($s['photo']) && preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
+                        $data = base64_decode(substr($s['photo'], strpos($s['photo'], ',') + 1));
+                        $photoPath = 'eleves/photos/eleve_' . uniqid() . '.' . strtolower($type[1]);
+                        Storage::disk('public')->put($photoPath, $data);
+                    }
+    
+    
+                    // Génération QR
+                    $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
+                    $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
+                    $qrFullPath = storage_path('app/public/' . $qrCodePath);
+    
+                    if (!file_exists(dirname($qrFullPath))) {
+                        mkdir(dirname($qrFullPath), 0755, true);
+                    }
+    
+                    $qrCode = new QrCode($qrContent);
+                    $writer = new PngWriter();
+                    $result = $writer->write($qrCode);
+                    $result->saveToFile($qrFullPath);
+    
+                    Eleve::create([
+                        'ecole_id' => $ecole->id,
+                        'classe_id' => $request->classe_id,
+                        'nom' => $s['nom'],
+                        'prenom' => $s['prenom'],
+                        'sexe' => $s['sexe'],
+                        'nationalite' => $s['nationalite'] ?? 'BENIN',
+                        'date_naissance' => $s['date_naissance'],
+                        'lieu_naissance' => $s['lieu_naissance'] ?? '',
+                        'telephone_tuteur' => $s['telephone_tuteur'] ?? '',
+                        'photo' => $photoPath,
+                        'matricule_edumaster' => $s['matricule'] ?? null,
+                        'qr_code' => $qrCodePath,
+                    ]);
                 }
-
-                if (!empty($s['matricule']) && Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
-                    continue;
-                }
-
-                $photoPath = null;
-                if (!empty($s['photo']) && preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
-                    $data = base64_decode(substr($s['photo'], strpos($s['photo'], ',') + 1));
-                    $photoPath = 'eleves/photos/eleve_' . uniqid() . '.' . strtolower($type[1]);
-                    Storage::disk('public')->put($photoPath, $data);
-                }
-
-
-                // Génération QR
-                $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
-                $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
-                $qrFullPath = storage_path('app/public/' . $qrCodePath);
-
-                if (!file_exists(dirname($qrFullPath))) {
-                    mkdir(dirname($qrFullPath), 0755, true);
-                }
-
-                $qrCode = new QrCode($qrContent);
-                $writer = new PngWriter();
-                $result = $writer->write($qrCode);
-                $result->saveToFile($qrFullPath);
-
-                Eleve::create([
-                    'ecole_id' => $ecole->id,
-                    'classe_id' => $request->classe_id,
-                    'nom' => $s['nom'],
-                    'prenom' => $s['prenom'],
-                    'sexe' => $s['sexe'],
-                    'nationalite' => $s['nationalite'] ?? 'BENIN',
-                    'date_naissance' => $s['date_naissance'],
-                    'lieu_naissance' => $s['lieu_naissance'] ?? '',
-                    'telephone_tuteur' => $s['telephone_tuteur'] ?? '',
-                    'photo' => $photoPath,
-                    'matricule_edumaster' => $s['matricule'] ?? null,
-                    'qr_code' => $qrCodePath,
-                ]);
-            }
-        });
-
-        return response()->json(['success' => true]);
+            });
+    
+            return response()->json(['success' => true]);
+    
+        } catch (Exception $e) {
+            Log::error('Erreur Store Import: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'enregistrement des élèves.',
+                'details' => $e->getMessage()
+            ], 500);
+        }
     }
+        
 }
