@@ -19,6 +19,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use Illuminate\Support\Facades\Log;
+use App\Models\Serie;
 
 class StudentImportController extends Controller
 {
@@ -183,7 +184,7 @@ class StudentImportController extends Controller
             $s = strtoupper(trim(Str::ascii($rawSexe)));
 
             // On initialise par défaut à M, mais on vérifie précisément
-            $sexe = 'M'; 
+            $sexe = 'M';
 
             // Comparaison exacte pour éviter de confondre avec un prénom commençant par M ou F
             if (in_array($s, ['F', 'FEMININ', 'FILLE', 'FEMME'])) {
@@ -217,9 +218,9 @@ class StudentImportController extends Controller
                 'telephone_tuteur' => $getVal('telephone') ?: '00000000',
             ];
         }
-        \Log::info('Total students: ' . count($students));
-        \Log::info('Premier étudiant: ' . json_encode($students[0] ?? null));
-        \Log::info(' IMPORT DEBUG END');
+        Log::info('Total students: ' . count($students));
+        Log::info('Premier étudiant: ' . json_encode($students[0] ?? null));
+        Log::info(' IMPORT DEBUG END');
 
         if (empty($students)) {
             return response()->json([
@@ -328,9 +329,23 @@ class StudentImportController extends Controller
                 $result = $writer->write($qrCode);
                 $result->saveToFile($qrFullPath);
 
+
+
+
+                //récupération de la série lié à la classe 
+                $serie = Serie::where('nom', $request->serie)->first();
+                $classe = Classe::where('id', $request->classe_id)->first();
+                $classeId = Classe::where('serie_id', $serie->id)
+                    ->where('nom', $classe->nom)
+                    ->first();
+
+                Log::info('La serie ' . $serie->id);
+                Log::info('Id classe ' . $classe->nom);
+                Log::info('Id classe Normale ' . $classeId->id);
+
                 Eleve::create([
                     'ecole_id' => $ecole->id,
-                    'classe_id' => $request->classe_id,
+                    'classe_id' => $classeId->id,
                     'nom' => $s['nom'],
                     'prenom' => $s['prenom'],
                     'sexe' => $s['sexe'],

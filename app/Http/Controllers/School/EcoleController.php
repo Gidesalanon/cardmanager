@@ -18,7 +18,7 @@ class EcoleController extends Controller
      */
     public function create()
     {
-        // 🔐 Blocage : une seule école par compte
+        // Blocage : une seule école par compte
         if (Ecole::where('user_id', Auth::id())->exists()) {
             abort(403, "Une école est déjà associée à ce compte.");
         }
@@ -32,13 +32,15 @@ class EcoleController extends Controller
      */
     public function store(Request $request)
     {
-        // 🔐 Sécurité back-end
+        // Sécurité back-end
         if (Ecole::where('user_id', Auth::id())->exists()) {
-            abort(403, "Une école est déjà associée à ce compte.");
+            return redirect()
+                ->back()
+                ->with('error', "Une école est déjà associée à ce compte.");
         }
 
         $request->validate([
-            'ecole.nom' => 'required|string|max:255',
+            'ecole.nom' => 'required|string|max:255|unique:ecoles,nom_ecole',
             'ecole.numero_autorisation' => 'required|string|unique:ecoles,numero_autorisation',
             'ecole.telephone' => 'nullable|string|max:20',
             'ecole.adresse' => 'nullable|string|max:255',
@@ -49,14 +51,37 @@ class EcoleController extends Controller
             'directeur.telephone' => 'nullable|string|max:20',
             'directeur.email' => 'nullable|email',
 
-            'directeur.signature' => 'nullable|image|mimes:png,jpg,jpeg',
-            'directeur.cachet' => 'nullable|image|mimes:png,jpg,jpeg',
+            'directeur.signature' => 'required|image|mimes:png,jpg,jpeg',
+            'directeur.cachet' => 'required|image|mimes:png,jpg,jpeg',
+
+        ], [
+
+            // École
+            'ecole.nom.required' => "Le nom de l'école est obligatoire.",
+            'ecole.nom.unique' => "Une école avec ce nom existe déjà.",
+            'ecole.numero_autorisation.required' => "Le numéro d'autorisation est obligatoire.",
+            'ecole.numero_autorisation.unique' => "Ce numéro d'autorisation est déjà utilisé.",
+
+            // Directeur
+            'directeur.nom.required' => "Le nom du directeur est obligatoire.",
+            'directeur.prenom.required' => "Le prénom du directeur est obligatoire.",
+            'directeur.email.email' => "L'adresse email du directeur n'est pas valide.",
+            'directeur.sexe.in' => "Le sexe doit être M ou F.",
+
+            // Fichiers
+            'directeur.signature.required' => "La signature du directeur est obligatoire.",
+            'directeur.signature.image' => "La signature doit être une image.",
+            'directeur.signature.mimes' => "La signature doit être en format PNG, JPG ou JPEG.",
+
+            'directeur.cachet.required' => "Le cachet est obligatoire.",
+            'directeur.cachet.image' => "Le cachet doit être une image.",
+            'directeur.cachet.mimes' => "Le cachet doit être en format PNG, JPG ou JPEG.",
         ]);
 
         DB::transaction(function () use ($request) {
 
             /** ==========================
-             * 1️⃣ Création de l’école
+             * Création de l’école
              * ========================== */
             $ecole = Ecole::create([
                 'user_id' => Auth::id(),
@@ -67,7 +92,7 @@ class EcoleController extends Controller
             ]);
 
             /** ==========================
-             * 2️⃣ Upload signature & cachet
+             * Upload signature & cachet
              * ========================== */
             $signaturePath = null;
             $cachetPath = null;
@@ -83,7 +108,7 @@ class EcoleController extends Controller
             }
 
             /** ==========================
-             * 3️⃣ Création du directeur
+             * Création du directeur
              * ========================== */
             Directeur::create([
                 'ecole_id' => $ecole->id,

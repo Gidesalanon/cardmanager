@@ -74,23 +74,6 @@
             min-height: 7px
         }
 
-        .sign {
-            display: flex;
-            justify-content: center; 
-            align-items: center; 
-            gap: 10px;
-            width: 100%;
-        }
-
-        
-        .sign-box {
-            border: 0.3mm solid #000;
-            margin-left: 120px;
-            margin-top: -7px;
-            text-align: center;
-            height: 30px;
-            width: 90px;
-        }
         /* Titre Modifié : Taille réduite et nom changé */
         .card-title {
             position: absolute;
@@ -130,8 +113,19 @@
             padding-bottom: 0.6mm;
             vertical-align: top;
         }
-        .label { font-weight: bold; width: 16mm; font-size: 10px }
-        .label-sign { font-weight: bold; width: auto; font-size: 8px }
+
+        .label {
+            font-weight: bold;
+            width: 16mm;
+            font-size: 10px
+        }
+
+        .label-sign {
+            font-weight: bold;
+            width: 90mm;
+            font-size: 8px
+        }
+
         .sig-apprenant-box {
             position: absolute;
             bottom: 6mm;
@@ -309,13 +303,10 @@
                     <td>: {{ $eleve->telephone_tuteur }}</td>
                 </tr>
             </table>
-            <div class="sign">
-                <div class="label-sign">Signature de l'apprenant</div>
-                <div class="sign-box">
-                    
-                </div>
+            <div class="label-sign">Signature de l'apprenant</div>
+            <div class="sig-apprenant-box">
+
             </div>
-            
         </div>
 
         <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
@@ -343,15 +334,11 @@
             </div>
             <!-- Cachet + signature -->
             <div class="stamp-signature">
-                @if (optional($eleve->ecole->directeur)->signature)
-                    <img src="{{ asset('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
-                @endif
+                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) ?? 'signature' }}"
+                    alt="Signature">
             </div>
-
             <div class="stamp-cachet">
-                @if (optional($eleve->ecole->directeur)->cachet)
-                    <img src="{{ asset('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
-                @endif
+                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) ?? 'cachet' }}" alt="Cachet">
             </div>
         </div>
         <!-- Nom Directrice -->
@@ -371,31 +358,6 @@
             <div class="red"></div>
         </div>
     </div>
-
-    <!-- Nom Directrice -->
-    <div class="director-name">
-        <span>
-        @if($eleve->ecole->directeur->sexe == 'F')
-            La Directrice
-        @else
-            Le Directeur
-        @endif
-        <br>
-    </span>
-        {{ $eleve->ecole->directeur->prenom }} 
-        {{ strtoupper($eleve->ecole->directeur->nom ?? '') }}
-    </div>
-
-    <!-- Réalisation -->
-    <div class="footer-real">
-        Réal: DONAMI-CHRIST - TEL: 97 22 48 87
-    </div>
-
-    <!-- Bande tricolore -->
-    <div class="flag-bar" style="bottom: 0;">
-            <div class="green"></div><div class="yellow"></div><div class="red"></div>
-    </div>
-</div>
 </body>
 
 </html>
