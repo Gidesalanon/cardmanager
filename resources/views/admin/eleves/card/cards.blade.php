@@ -74,6 +74,23 @@
             min-height: 7px
         }
 
+        .sign {
+            display: flex;
+            justify-content: center; 
+            align-items: center; 
+            gap: 10px;
+            width: 100%;
+        }
+
+        
+        .sign-box {
+            border: 0.3mm solid #000;
+            margin-left: 120px;
+            margin-top: -7px;
+            text-align: center;
+            height: 30px;
+            width: 90px;
+        }
         /* Titre Modifié : Taille réduite et nom changé */
         .card-title {
             position: absolute;
@@ -113,19 +130,8 @@
             padding-bottom: 0.6mm;
             vertical-align: top;
         }
-
-        .label {
-            font-weight: bold;
-            width: 16mm;
-            font-size: 10px
-        }
-
-        .label-sign {
-            font-weight: bold;
-            width: 90mm;
-            font-size: 8px
-        }
-
+        .label { font-weight: bold; width: 16mm; font-size: 10px }
+        .label-sign { font-weight: bold; width: auto; font-size: 8px }
         .sig-apprenant-box {
             position: absolute;
             bottom: 6mm;
@@ -303,10 +309,13 @@
                     <td>: {{ $eleve->telephone_tuteur }}</td>
                 </tr>
             </table>
-            <div class="label-sign">Signature de l'apprenant</div>
-            <div class="sig-apprenant-box">
-
+            <div class="sign">
+                <div class="label-sign">Signature de l'apprenant</div>
+                <div class="sign-box">
+                    
+                </div>
             </div>
+            
         </div>
 
         <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
