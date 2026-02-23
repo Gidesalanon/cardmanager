@@ -12,11 +12,14 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use Illuminate\Support\Facades\Log;
 
 class StudentImportController extends Controller
 {
@@ -75,15 +78,15 @@ class StudentImportController extends Controller
         $headerRow = null;
         $usedColumns = []; // Pour tracker les colonnes déjà assignées
 
-        \Log::info('=== IMPORT DEBUG START ===');
-        \Log::info('Highest Row: ' . $highestRow . ' | Highest Col: ' . $highestColumnLetter);
+        Log::info('=== IMPORT DEBUG START ===');
+        Log::info('Highest Row: ' . $highestRow . ' | Highest Col: ' . $highestColumnLetter);
 
         for ($row = 1; $row <= 15; $row++) {
             $rowIndices = [];
             $matchCount = 0;
             $usedColumns = []; // Réinitialiser pour chaque ligne
 
-            \Log::info("--- Scan row $row pour header ---");
+            Log::info("--- Scan row $row pour header ---");
 
             for ($col = 1; $col <= $highestColumnIndex; $col++) {
                 $colLetter = Coordinate::stringFromColumnIndex($col);
@@ -92,7 +95,7 @@ class StudentImportController extends Controller
 
                 if (empty($val) || $val === 'n°' || $val === 'no') continue;
 
-                \Log::info("  Col $colLetter: raw='$cellValue' | normalized='$val'");
+                Log::info("  Col $colLetter: raw='$cellValue' | normalized='$val'");
 
                 foreach ($mappingRules as $field => $synonyms) {
                     foreach ($synonyms as $synonym) {
@@ -113,7 +116,7 @@ class StudentImportController extends Controller
                                 $rowIndices[$field] = $colLetter;
                                 $usedColumns[] = $colLetter;
                                 $matchCount++;
-                                \Log::info("  => MATCH: field='$field' col='$colLetter' synonym='$synonym'");
+                                Log::info("  => MATCH: field='$field' col='$colLetter' synonym='$synonym'");
                             }
                             break;
                         }
@@ -121,7 +124,7 @@ class StudentImportController extends Controller
                 }
             }
 
-            \Log::info("Row $row: matchCount=$matchCount | indices=" . json_encode($rowIndices));
+            Log::info("Row $row: matchCount=$matchCount | indices=" . json_encode($rowIndices));
 
             if ($matchCount >= 3) {
                 $indices = $rowIndices;
@@ -130,8 +133,8 @@ class StudentImportController extends Controller
             }
         }
 
-        \Log::info('Header row final: ' . ($headerRow ?? 'NON DÉTECTÉ'));
-        \Log::info('Indices finaux: ' . json_encode($indices));
+        Log::info('Header row final: ' . ($headerRow ?? 'NON DÉTECTÉ'));
+        Log::info('Indices finaux: ' . json_encode($indices));
 
         if (!$headerRow) {
             return response()->json([
@@ -184,7 +187,7 @@ class StudentImportController extends Controller
                 $rawSexe = '';
             }
 
-            \Log::info("Row $row - Nom: '$nom' | Sexe RAW: '$rawSexe' | ASCII+Upper: '" . strtoupper(Str::ascii($rawSexe)) . "'");
+            Log::info("Row $row - Nom: '$nom' | Sexe RAW: '$rawSexe' | ASCII+Upper: '" . strtoupper(Str::ascii($rawSexe)) . "'");
 
             // Interprétation stricte du sexe
             $sexe = 'M'; // Valeur par défaut
@@ -201,13 +204,13 @@ class StudentImportController extends Controller
                     // Vérifier si c'est un prénom (comme dans vos logs)
                     // Si la valeur est longue (>3 caractères) 
                     if (strlen($s) > 3 && !in_array($s, ['M', 'F', 'MASCULIN', 'FEMININ'])) {
-                        \Log::info("Row $row - Valeur '$rawSexe' ignorée pour sexe (probablement un prénom)");
+                        Log::info("Row $row - Valeur '$rawSexe' ignorée pour sexe (probablement un prénom)");
                         $sexe = 'M'; // Défaut
                     }
                 }
             }
 
-            \Log::info("Row $row - Sexe final: '$sexe'");
+            Log::info("Row $row - Sexe final: '$sexe'");
 
             $matricule = $getVal('matricule');
             if (empty($matricule) || strlen($matricule) < 3) {
@@ -227,9 +230,9 @@ class StudentImportController extends Controller
             ];
         }
 
-        \Log::info('Total students: ' . count($students));
-        \Log::info('Premier étudiant: ' . json_encode($students[0] ?? null));
-        \Log::info(' IMPORT DEBUG END');
+        Log::info('Total students: ' . count($students));
+        Log::info('Premier étudiant: ' . json_encode($students[0] ?? null));
+        Log::info(' IMPORT DEBUG END');
 
         if (empty($students)) {
             return response()->json([
@@ -295,32 +298,6 @@ class StudentImportController extends Controller
     }
 
 
-    public function downloadCanvas()
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-
-        // En-têtes
-        $headers = ['Matricule', 'Nom', 'Prénom', 'Sexe', 'Date Naissance', 'Lieu Naissance', 'Téléphone Parent', 'Nationalité'];
-        $sheet->fromArray($headers, NULL, 'A1');
-
-        // Exemple de données
-        $sheet->setCellValue('A2', '10203040');
-        $sheet->setCellValue('B2', 'NOM EXEMPLE');
-        $sheet->setCellValue('C2', 'Prénom Exemple');
-        $sheet->setCellValue('D2', 'M');
-        $sheet->setCellValue('E2', '12/05/2010');
-        $sheet->setCellValue('F2', 'Cotonou');
-        $sheet->setCellValue('G2', '0100000000');
-        $sheet->setCellValue('H2', 'BENIN');
-
-        $writer = new Xlsx($spreadsheet);
-        $fileName = 'canevas_import_eleves.xlsx';
-        $tempFile = tempnam(sys_get_temp_dir(), $fileName);
-        $writer->save($tempFile);
-
-        return response()->download($tempFile, $fileName)->deleteFileAfterSend(true);
-    }
 
     public function storeAll(Request $request)
     {
@@ -349,8 +326,20 @@ class StudentImportController extends Controller
                     Storage::disk('public')->put($photoPath, $data);
                 }
 
+
+                // Génération QR
                 $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
                 $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
+                $qrFullPath = storage_path('app/public/' . $qrCodePath);
+
+                if (!file_exists(dirname($qrFullPath))) {
+                    mkdir(dirname($qrFullPath), 0755, true);
+                }
+
+                $qrCode = new QrCode($qrContent);
+                $writer = new PngWriter();
+                $result = $writer->write($qrCode);
+                $result->saveToFile($qrFullPath);
 
                 Eleve::create([
                     'ecole_id' => $ecole->id,
