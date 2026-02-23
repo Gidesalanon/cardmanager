@@ -334,10 +334,15 @@
             </div>
             <!-- Cachet + signature -->
             <div class="stamp-signature">
-                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
+                @if (optional($eleve->ecole->directeur)->signature)
+                    <img src="{{ asset('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
+                @endif
             </div>
+
             <div class="stamp-cachet">
-                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
+                @if (optional($eleve->ecole->directeur)->cachet)
+                    <img src="{{ asset('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
+                @endif
             </div>
         </div>
         <!-- Nom Directrice -->
