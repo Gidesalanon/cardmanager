@@ -1,6 +1,74 @@
 <x-guest-layout>
+    <style>
+        .notification-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            z-index: 9999;
+            animation: slideInRight 0.5s ease-out;
+            max-width: 400px;
+        }
+        
+        .notification-toast .icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        .notification-toast.hiding {
+            animation: slideOutRight 0.5s ease-out forwards;
+        }
+    </style>
+
+    @if (session('success'))
+        <div id="successNotification" class="notification-toast">
+            <div class="icon">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <span>{{ session('success') }}</span>
+        </div>
+    @endif
+
     <div class="mb-4 text-xl text-gray-600 dark:text-gray-400">
-        {{ __('Merci de vous être inscrit ! Avant de commencer, pourriez-vous vérifier votre adresse e-mail en cliquant sur le lien que nous venons de vous envoyer ? Si vous n\'avez pas reçu l\'e-mail, nous vous en enverrons un autre avec plaisir.') }}
+        {{ __('Merci de vous être inscrit ! Avant de commencer, pourriez-vous vérifier votre adresse e-mail en cliquant sur le lien que nous venons de vous envoyer ? Si vous n\'avez pas reçu l\'e-mail, nous vous enverrons un autre avec plaisir.') }}
     </div>
 
     @if (session('status') == 'verification-link-sent')
@@ -28,4 +96,21 @@
             </button>
         </form> --}}
     </div>
+
+    @if (session('success'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const notification = document.getElementById('successNotification');
+                if (notification) {
+                    // Cacher la notification après 4 secondes
+                    setTimeout(() => {
+                        notification.classList.add('hiding');
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 500);
+                    }, 4000);
+                }
+            });
+        </script>
+    @endif
 </x-guest-layout>

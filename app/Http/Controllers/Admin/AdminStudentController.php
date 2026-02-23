@@ -19,6 +19,7 @@ class AdminStudentController extends Controller
     public function index(Request $request)
     {
         $allClasses = Classe::orderBy('nom')->get();
+        $ecoles = Ecole::orderBy('nom_ecole')->get();
 
         // Supprimer doublons visuels (6ème 6ème 6ème)
         $classes = $allClasses
@@ -31,21 +32,41 @@ class AdminStudentController extends Controller
             ->map(fn($group) => $group->first())
             ->values();
 
-        $selectedClasse = $request->classe_id ?? null;
+        // Récupérer les filtres
+        $filters = [
+            'ecole_id' => $request->get('ecole_id'),
+            'classe_id' => $request->get('classe_id'),
+            'nom' => $request->get('nom'),
+            'sexe' => $request->get('sexe'),
+        ];
 
         // Admin : voit tous les élèves de toutes les écoles
         $query = Eleve::with(['ecole', 'classe'])->orderBy('nom');
 
-        if ($selectedClasse) {
-            $query->where('classe_id', $selectedClasse);
+        // Appliquer les filtres
+        if (!empty($filters['ecole_id'])) {
+            $query->where('ecole_id', $filters['ecole_id']);
         }
 
-        $eleves = $query->get();
+        if (!empty($filters['classe_id'])) {
+            $query->where('classe_id', $filters['classe_id']);
+        }
+
+        if (!empty($filters['nom'])) {
+            $query->where('name', 'LIKE', '%'.$filters['nom'].'%');
+        }
+
+        if (!empty($filters['sexe'])) {
+            $query->where('sexe', $filters['sexe']);
+        }
+
+        $eleves = $query->paginate(15)->withQueryString();
 
         return view('admin.eleves.index', compact(
             'eleves',
             'classes',
-            'selectedClasse'
+            'ecoles',
+            'filters'
         ));
     }
 

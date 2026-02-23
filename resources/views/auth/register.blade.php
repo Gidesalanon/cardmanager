@@ -36,6 +36,62 @@
     .hidden {
         display: none;
     }
+
+    /* Notification Toast */
+    .notification-toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        z-index: 9999;
+        animation: slideInRight 0.5s ease-out;
+        max-width: 400px;
+    }
+    
+    .notification-toast .icon {
+        width: 24px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    .notification-toast.hiding {
+        animation: slideOutRight 0.5s ease-out forwards;
+    }
 </style>
 
 <div class="login-theme-toggle">
@@ -181,6 +237,96 @@
             eyeOff.classList.add('hidden');
         }
     }
+
+    /**
+     * Afficher la notification de succès
+     */
+    function showSuccessNotification() {
+        // Créer la notification
+        const notification = document.createElement('div');
+        notification.className = 'notification-toast';
+        notification.id = 'successNotification';
+        notification.innerHTML = `
+            <div class="icon">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <span>Compte créé avec succès ! Bienvenue sur CardManager.</span>
+        `;
+        
+        // Ajouter au body
+        document.body.appendChild(notification);
+        
+        // Cacher après 3 secondes et rediriger
+        setTimeout(() => {
+            notification.classList.add('hiding');
+            setTimeout(() => {
+                notification.remove();
+                // Rediriger vers la page de vérification
+                window.location.href = "{{ route('verification.notice') }}";
+            }, 500);
+        }, 3000);
+    }
+
+    /**
+     * Intercepter la soumission du formulaire
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('.login-form');
+        
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault(); // Empêcher la soumission normale
+                
+                // Récupérer les données du formulaire
+                const formData = new FormData(form);
+                
+                // Envoyer avec fetch
+                fetch('{{ route('register') }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Afficher la notification de succès
+                        showSuccessNotification();
+                    } else {
+                        // Afficher les erreurs
+                        if (data.errors) {
+                            // Gérer les erreurs de validation
+                            let errorHtml = '';
+                            for (let field in data.errors) {
+                                errorHtml += data.errors[field][0] + '<br>';
+                            }
+                            
+                            // Afficher l'alerte d'erreur
+                            const existingAlert = document.querySelector('.alert-danger');
+                            if (existingAlert) {
+                                existingAlert.innerHTML = errorHtml;
+                                existingAlert.style.display = 'block';
+                            } else {
+                                const alert = document.createElement('div');
+                                alert.className = 'alert alert-danger';
+                                alert.innerHTML = errorHtml;
+                                form.parentNode.insertBefore(alert, form);
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    // En cas d'erreur, soumettre normalement le formulaire
+                    form.submit();
+                });
+            });
+        }
+    });
 </script>
 
 @endsection
