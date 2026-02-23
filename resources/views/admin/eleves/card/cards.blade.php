@@ -366,6 +366,31 @@
             <div class="red"></div>
         </div>
     </div>
+
+    <!-- Nom Directrice -->
+    <div class="director-name">
+        <span>
+        @if($eleve->ecole->directeur->sexe == 'F')
+            La Directrice
+        @else
+            Le Directeur
+        @endif
+        <br>
+    </span>
+        {{ $eleve->ecole->directeur->prenom }} 
+        {{ strtoupper($eleve->ecole->directeur->nom ?? '') }}
+    </div>
+
+    <!-- Réalisation -->
+    <div class="footer-real">
+        Réal: DONAMI-CHRIST - TEL: 97 22 48 87
+    </div>
+
+    <!-- Bande tricolore -->
+    <div class="flag-bar" style="bottom: 0;">
+            <div class="green"></div><div class="yellow"></div><div class="red"></div>
+    </div>
+</div>
 </body>
 
 </html>
