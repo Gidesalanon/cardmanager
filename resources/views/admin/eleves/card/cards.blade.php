@@ -194,7 +194,8 @@
         .stamp-cachet {
             display: inline-block;
             vertical-align: middle;
-            margin: 0 20px;        /*Espacement horizontal*/
+            margin: 0 20px;
+            /*Espacement horizontal*/
         }
 
         .center-zone img {
@@ -291,7 +292,7 @@
                 <img src="{{ public_path('storage/' . $eleve->qr_code) }}" alt="QR">
             </div>
         </div>
-        
+
         <img src="{{ public_path('storage/' . $eleve->photo) }}" class="photo">
         <div class="info-container">
             <table class="info-table">
@@ -353,14 +354,14 @@
         <!-- Nom Directrice -->
         <div class="director-name">
             <span>
-                @if($eleve->ecole->directeur->sexe == 'F')
+                @if ($eleve->ecole->directeur->sexe == 'F')
                     La Directrice
                 @else
                     Le Directeur
                 @endif
                 <br>
             </span>
-            {{ $eleve->ecole->directeur->prenom }} 
+            {{ $eleve->ecole->directeur->prenom }}
             {{ strtoupper($eleve->ecole->directeur->nom ?? '') }}
         </div>
 
@@ -371,7 +372,9 @@
 
         <!-- Bande tricolore -->
         <div class="flag-bar" style="bottom: 0;">
-            <div class="green"></div><div class="yellow"></div><div class="red"></div>
+            <div class="green"></div>
+            <div class="yellow"></div>
+            <div class="red"></div>
         </div>
     </div>
 </body>
