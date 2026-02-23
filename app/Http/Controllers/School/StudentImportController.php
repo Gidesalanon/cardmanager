@@ -15,7 +15,6 @@ use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class StudentImportController extends Controller
@@ -142,7 +141,6 @@ class StudentImportController extends Controller
 
         $students = [];
         for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
-
             $getVal = function ($field) use ($worksheet, $indices, $row) {
                 return isset($indices[$field]) ? trim((string)$worksheet->getCell($indices[$field] . $row)->getValue()) : '';
             };
@@ -150,6 +148,7 @@ class StudentImportController extends Controller
             $nom = "";
             $prenom = "";
 
+            // 1. GESTION NOM / PRENOM
             if (isset($indices['nom_prenom'])) {
                 $full = $getVal('nom_prenom');
                 $parts = explode(' ', $full, 2);
@@ -162,6 +161,7 @@ class StudentImportController extends Controller
 
             if (empty($nom) || is_numeric($nom)) continue;
 
+            // 2. GESTION DATE ET LIEU
             $dateNaiss = null;
             $lieuNaiss = "";
             if (isset($indices['date_lieu'])) {
@@ -175,40 +175,28 @@ class StudentImportController extends Controller
                 $lieuNaiss = $getVal('lieu_naiss');
             }
 
-            // Récupération et interprétation correcte du sexe
+            // 3. INTERPRÉTATION DU SEXE (Version Robuste)
             $rawSexe = $getVal('sexe');
+            $s = strtoupper(trim(Str::ascii($rawSexe)));
 
-            // Si on n'a pas trouvé de colonne sexe, essayer de détecter depuis le prénom (fallback)
-            if (empty($rawSexe) && !empty($prenom)) {
-                // Fallback: essayer de déduire le sexe du prénom? À éviter, mieux vaut avoir une colonne dédiée
-                $rawSexe = '';
-            }
+            // On initialise par défaut à M, mais on vérifie précisément
+            $sexe = 'M'; 
 
-            \Log::info("Row $row - Nom: '$nom' | Sexe RAW: '$rawSexe' | ASCII+Upper: '" . strtoupper(Str::ascii($rawSexe)) . "'");
-
-            // Interprétation stricte du sexe
-            $sexe = 'M'; // Valeur par défaut
-
-            if (!empty($rawSexe)) {
-                $s = strtoupper(trim(Str::ascii($rawSexe)));
-
-                // Ne garder que le premier caractère si c'est M ou F
-                if (str_starts_with($s, 'M') || str_starts_with($s, 'MASCULIN') || $s === 'M') {
-                    $sexe = 'M';
-                } elseif (str_starts_with($s, 'F') || str_starts_with($s, 'FEMININ') || $s === 'F') {
-                    $sexe = 'F';
-                } else {
-                    // Vérifier si c'est un prénom (comme dans vos logs)
-                    // Si la valeur est longue (>3 caractères) 
-                    if (strlen($s) > 3 && !in_array($s, ['M', 'F', 'MASCULIN', 'FEMININ'])) {
-                        \Log::info("Row $row - Valeur '$rawSexe' ignorée pour sexe (probablement un prénom)");
-                        $sexe = 'M'; // Défaut
-                    }
+            // Comparaison exacte pour éviter de confondre avec un prénom commençant par M ou F
+            if (in_array($s, ['F', 'FEMININ', 'FILLE', 'FEMME'])) {
+                $sexe = 'F';
+            } elseif (in_array($s, ['M', 'MASCULIN', 'GARCON', 'HOMME'])) {
+                $sexe = 'M';
+            } else {
+                // Si la valeur est juste la première lettre 'F' ou 'M'
+                if (strlen($s) > 0) {
+                    $firstChar = substr($s, 0, 1);
+                    if ($firstChar === 'F') $sexe = 'F';
+                    else $sexe = 'M';
                 }
             }
 
-            \Log::info("Row $row - Sexe final: '$sexe'");
-
+            // 4. MATRICULE
             $matricule = $getVal('matricule');
             if (empty($matricule) || strlen($matricule) < 3) {
                 $matricule = "ID-" . strtoupper(substr(Str::slug($nom), 0, 3)) . "-" . $row;
@@ -219,14 +207,13 @@ class StudentImportController extends Controller
                 'matricule'        => $matricule,
                 'nom'              => strtoupper($nom),
                 'prenom'           => ucwords(strtolower($prenom)),
-                'sexe'             => $sexe,
+                'sexe'             => $sexe, // Sera bien 'M' ou 'F'
                 'nationalite'      => $getVal('nationalite') ?: 'BENIN',
                 'date_naissance'   => $dateNaiss,
                 'lieu_naissance'   => $lieuNaiss ?: '',
                 'telephone_tuteur' => $getVal('telephone') ?: '00000000',
             ];
         }
-
         \Log::info('Total students: ' . count($students));
         \Log::info('Premier étudiant: ' . json_encode($students[0] ?? null));
         \Log::info(' IMPORT DEBUG END');

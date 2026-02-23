@@ -52,7 +52,6 @@
             margin: 0 auto 20px;
         }
         
-        /* Couleurs selon l'état */
         .modal-icon.error { background: #fee2e2; color: #dc2626; }
         .modal-icon.success { background: #dcfce7; color: #16a34a; }
 
@@ -105,11 +104,25 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
         }
         .progress-bar { height: 4px; background: #16a34a; transition: width 0.3s; }
+        
+        /* CORRECTION ICI : select (balise) et non .select (classe) */
+        /* Force l'affichage du texte dans le select */
+        select.form-input {
+            appearance: auto !important;
+            -webkit-appearance: menulist !important;
+            -moz-appearance: menulist !important;
+            padding: 0 10px !important; /* Réduit le padding */
+            height: 38px !important;    /* Force une hauteur fixe */
+            background-color: white !important;
+            color: black !important;
+            font-size: 14px !important;
+            line-height: normal !important;
+        }
     </style>
 
     <div x-data="studentImport()" class="settings-grid">
 
-        <!-- TOAST (Pour notifications rapides) -->
+        <!-- TOAST -->
         <div x-show="toast.show" x-transition class="toast" 
              :style="toast.type === 'error' ? 'background:#dc2626' : 'background:#16a34a'" 
              x-text="toast.message"></div>
@@ -207,7 +220,7 @@
                                 <td><input class="form-input" x-model="s.nom"></td>
                                 <td><input class="form-input" x-model="s.prenom"></td>
                                 <td>
-                                    <select class="form-input" x-model="s.sexe">
+                                    <select class="form-input" x-model="s.sexe" style="min-width: 60px;">
                                         <option value="M">M</option>
                                         <option value="F">F</option>
                                     </select>
@@ -242,11 +255,9 @@
             <div class="modal-overlay" @click.self="statusModal.show = false">
                 <div class="modal-content">
                     <div class="modal-icon" :class="statusModal.type">
-                        <!-- Icône Erreur -->
                         <template x-if="statusModal.type === 'error'">
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                         </template>
-                        <!-- Icône Succès -->
                         <template x-if="statusModal.type === 'success'">
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         </template>
@@ -262,7 +273,6 @@
                                 Télécharger le canevas conforme
                             </a>
                         </template>
-                        <!-- Bouton d'action (Fermer ou Rediriger) -->
                         <button class="btn-close-modal" 
                                 @click="statusModal.callback ? statusModal.callback() : statusModal.show = false"
                                 x-text="statusModal.type === 'success' ? 'Continuer' : 'J\'ai compris'">
@@ -285,14 +295,9 @@
                 progress: 0,
                 toast: { show: false, message: '', type: 'success' },
                 
-                // État du Modal de Statut
                 statusModal: { 
-                    show: false, 
-                    title: '', 
-                    message: '', 
-                    type: 'error', 
-                    showCanvasBtn: false,
-                    callback: null 
+                    show: false, title: '', message: '', type: 'error', 
+                    showCanvasBtn: false, callback: null 
                 },
 
                 notify(msg, type = 'success') {
@@ -300,7 +305,6 @@
                     setTimeout(() => this.toast.show = false, 4000);
                 },
 
-                // Fonction pour afficher le modal central
                 showStatus(title, message, type = 'error', showCanvas = false, callback = null) {
                     this.statusModal.title = title;
                     this.statusModal.message = message;
@@ -312,7 +316,7 @@
 
                 checkSerie() {
                     let select = document.querySelector('select[x-model="classe_id"]');
-                    if (!select.selectedIndex) return;
+                    if (!select || !select.selectedIndex) return;
                     let nom = select.options[select.selectedIndex].getAttribute('data-nom').toLowerCase();
                     this.showSerie = (nom.includes('2nde') || nom.includes('seconde') || nom.includes('1ère') || nom.includes('tle'));
                     if (!this.showSerie) this.serie = '';
@@ -337,7 +341,14 @@
                             this.loading = false; this.progress = 0; return;
                         }
 
-                        this.students = d.students ?? [];
+                        // CORRECTION : Normalisation du sexe pour le <select>
+                        this.students = (d.students ?? []).map(s => {
+                            return {
+                                ...s,
+                                sexe: s.sexe ? s.sexe.toString().toUpperCase().substring(0,1) : 'M'
+                            };
+                        });
+
                         this.progress = 100;
                         this.notify('Analyse terminée', 'success');
                     } catch (e) {
@@ -376,7 +387,6 @@
                         const d = await r.json();
                         
                         if (r.ok && d.success) {
-                            // AFFICHAGE DU MODAL DE SUCCÈS AU CENTRE
                             this.showStatus(
                                 'Enregistrement réussi !', 
                                 'Les élèves ont été ajoutés avec succès. Vous allez être redirigé vers la liste.', 
