@@ -97,29 +97,32 @@
                         </td>
                         <td>{{ $eleve->telephone_tuteur }}</td>
 
-                        <td class="actions-cell">
-                            <a href="{{ route('school.students.edit', $eleve) }}"
-                               class="circle-btn circle-edit"
-                               title="Modifier">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
+                        <td >
+                            <div class="actions-cell">
+                                <a href="{{ route('school.students.edit', $eleve) }}"
+                                    class="circle-btn circle-edit"
+                                    title="Modifier">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
 
-                            {{-- Formulaire de suppression avec ID unique --}}
-                            <form id="delete-form-{{ $eleve->id }}" 
-                                  action="{{ route('school.students.destroy', $eleve) }}"
-                                  method="POST" 
-                                  style="display:none;">
-                                @csrf
-                                @method('DELETE')
-                            </form>
+                                {{-- Formulaire de suppression avec ID unique --}}
+                                <form id="delete-form-{{ $eleve->id }}" 
+                                    action="{{ route('school.students.destroy', $eleve) }}"
+                                    method="POST" 
+                                    style="display:none;">
+                                    @csrf
+                                    @method('DELETE')
+                                </form>
 
-                            {{-- Bouton déclencheur SweetAlert --}}
-                            <button type="button" 
-                                    onclick="confirmDelete({{ $eleve->id }}, '{{ addslashes($eleve->nom . ' ' . $eleve->prenom) }}')"
-                                    class="circle-btn circle-delete"
-                                    title="Supprimer">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
+                                {{-- Bouton déclencheur SweetAlert --}}
+                                <button type="button" 
+                                        onclick="confirmDelete({{ $eleve->id }}, '{{ addslashes($eleve->nom . ' ' . $eleve->prenom) }}')"
+                                        class="circle-btn circle-delete"
+                                        title="Supprimer">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                            
                         </td>
                     </tr>
                 @empty
