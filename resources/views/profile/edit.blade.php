@@ -13,6 +13,10 @@
                 createToast("✅ Profil mis à jour avec succès !", "#10b981");
             @endif
 
+            @if (session('status') === 'password-updated')
+                createToast("✅ Mot de passe changé avec succès !", "#10b981");
+            @endif
+
             @if ($errors->has('current_password'))
                 createToast("⚠️ {{ $errors->first('current_password') }}", "#ef4444");
             @elseif ($errors->any())
@@ -102,7 +106,23 @@
                 </div>
             </div>
 
-            <button type="submit" class="save-btn-modern">Enregistrer les modifications</button>
+            <div class="actions-grid">
+                <button type="submit" name="action" value="profile" class="save-btn-modern profile-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Enregistrer le profil
+                </button>
+                
+                <button type="submit" name="action" value="password" class="save-btn-modern password-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Changer le mot de passe
+                </button>
+            </div>
         </form>
     </div>
 </div>
@@ -132,8 +152,16 @@
 .highlight-field input { border-color: #3b82f6 !important; background: rgba(59, 130, 246, 0.02); }
 .readonly-input { background: var(--p-bg) !important; cursor: not-allowed; opacity: 0.7; }
 
-.save-btn-modern { width: 100%; background: var(--p-primary); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; margin-top: 20px; cursor: pointer; transition: 0.3s; }
+.save-btn-modern { width: 100%; background: var(--p-primary); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; margin-top: 20px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
 .save-btn-modern:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3); }
+
+.actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+
+.profile-btn { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.profile-btn:hover { box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4); }
+
+.password-btn { background: linear-gradient(135deg, #10b981, #059669); }
+.password-btn:hover { box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4); }
 
 .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
 .toast-item { min-width: 280px; padding: 16px 20px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 10px; animation: slideIn 0.4s ease forwards; }

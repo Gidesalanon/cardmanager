@@ -21,35 +21,53 @@ class AdminProfileController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $user = $request->user();
+        $action = $request->input('action');
 
         $customMessages = [
             'current_password.required' => 'Confirmer votre mot de passe',
             'current_password.current_password' => 'Mot de passe incorrect',
         ];
 
-        $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'name' => ['required', 'string', 'max:255'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
-            'password' => ['nullable', 'confirmed', 'min:8'],
-        ], $customMessages);
+        if ($action === 'profile') {
+            // === ACTION : ENREGISTRER LE PROFIL ===
+            
+            // Validation pour le profil (pas besoin de mot de passe)
+            $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            ]);
 
-        // Nom
-        $user->name = $request->name;
+            // Nom
+            $user->name = $request->name;
 
-        // Avatar
-        if ($request->hasFile('avatar')) {
-            if ($user->avatar) { Storage::disk('public')->delete($user->avatar); }
-            $user->avatar = $request->file('avatar')->store('avatars', 'public');
-        }
+            // Avatar
+            if ($request->hasFile('avatar')) {
+                if ($user->avatar) { Storage::disk('public')->delete($user->avatar); }
+                $user->avatar = $request->file('avatar')->store('avatars', 'public');
+            }
 
-        // Mot de passe
-        if ($request->filled('password')) {
+            $user->save();
+
+            return back()->with('status', 'profile-updated');
+
+        } elseif ($action === 'password') {
+            // === ACTION : CHANGER LE MOT DE PASSE ===
+            
+            // Validation pour le mot de passe
+            $request->validate([
+                'current_password' => ['required', 'current_password'],
+                'password' => ['required', 'confirmed', 'min:8'],
+            ], $customMessages);
+
+            // Mot de passe
             $user->password = Hash::make($request->password);
+            $user->save();
+
+            return back()->with('status', 'password-updated');
+
         }
 
-        $user->save();
-
-        return back()->with('status', 'profile-updated');
+        // Action par défaut (si aucun action spécifié)
+        return back()->with('error', 'Action non reconnue');
     }
 }

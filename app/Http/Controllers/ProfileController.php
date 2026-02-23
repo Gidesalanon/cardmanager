@@ -28,6 +28,7 @@ class ProfileController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $user = $request->user();
+        $action = $request->input('action');
 
         // Messages personnalisés pour que le Toast affiche exactement votre texte
         $customMessages = [
@@ -35,39 +36,54 @@ class ProfileController extends Controller
             'current_password.current_password' => 'Mot de passe incorrect',
         ];
 
-        // Validation unique et propre
-        $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'name' => ['required', 'string', 'max:255'],
-            // L'email n'est pas dans la validation car il est en readonly dans la vue
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
-            'password' => ['nullable', 'confirmed', 'min:8'],
-        ], $customMessages);
+        if ($action === 'profile') {
+            // === ACTION : ENREGISTRER LE PROFIL ===
+            
+            // Validation pour le profil (pas besoin de mot de passe)
+            $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            ]);
 
-        // 1. Sauvegarde du Nom
-        $user->name = $request->name;
+            // 1. Sauvegarde du Nom
+            $user->name = $request->name;
 
-        // 2. Sauvegarde de l'Avatar (Photo de profil)
-        if ($request->hasFile('avatar')) {
-            // Supprimer l'ancienne photo si elle existe
-            if ($user->avatar) { 
-                Storage::disk('public')->delete($user->avatar); 
+            // 2. Sauvegarde de l'Avatar (Photo de profil)
+            if ($request->hasFile('avatar')) {
+                // Supprimer l'ancienne photo si elle existe
+                if ($user->avatar) { 
+                    Storage::disk('public')->delete($user->avatar); 
+                }
+                // Enregistrer la nouvelle photo
+                $user->avatar = $request->file('avatar')->store('avatars', 'public');
             }
-            // Enregistrer la nouvelle photo
-            $user->avatar = $request->file('avatar')->store('avatars', 'public');
-        }
 
-        // 3. Sauvegarde du nouveau mot de passe (si rempli)
-        if ($request->filled('password')) {
+            $user->save();
+
+            // Rafraîchir la session pour que le nom change immédiatement dans le Topnav
+            $request->session()->put('user_name', $user->name);
+
+            return back()->with('status', 'profile-updated');
+
+        } elseif ($action === 'password') {
+            // === ACTION : CHANGER LE MOT DE PASSE ===
+            
+            // Validation pour le mot de passe
+            $request->validate([
+                'current_password' => ['required', 'current_password'],
+                'password' => ['required', 'confirmed', 'min:8'],
+            ], $customMessages);
+
+            // 3. Sauvegarde du nouveau mot de passe
             $user->password = Hash::make($request->password);
+            $user->save();
+
+            return back()->with('status', 'password-updated');
+
         }
 
-        $user->save();
-
-        // Rafraîchir la session pour que le nom change immédiatement dans le Topnav
-        $request->session()->put('user_name', $user->name);
-
-        return back()->with('status', 'profile-updated');
+        // Action par défaut (si aucun action spécifié)
+        return back()->with('error', 'Action non reconnue');
     }
 
     /**
