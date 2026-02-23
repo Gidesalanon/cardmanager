@@ -74,6 +74,24 @@
             min-height: 7px
         }
 
+        .sign {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+
+        .sign-box {
+            border: 0.4mm solid #000;
+            margin-left: 120px;
+            margin-top: -6px;
+            text-align: center;
+            height: 20px;
+            width: 70px;
+        }
+
         /* Titre Modifié : Taille réduite et nom changé */
         .card-title {
             position: absolute;
@@ -124,14 +142,14 @@
 
         .label {
             font-weight: bold;
-            width: 16mm;
-            font-size: 10px
+            width: 11mm;
+            height: 14px;
         }
 
         .label-sign {
             font-weight: bold;
-            width: 90mm;
-            font-size: 8px
+            width: auto;
+            font-size: 9px
         }
 
         .sig-apprenant-box {
@@ -317,10 +335,13 @@
                     <td>: {{ $eleve->telephone_tuteur }}</td>
                 </tr>
             </table>
-            <div class="label-sign">Signature de l'apprenant</div>
-            <div class="sig-apprenant-box">
+            <div class="sign">
+                <div class="label-sign">Signature de l'apprenant</div>
+                <div class="sign-box">
 
+                </div>
             </div>
+
         </div>
 
         <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
@@ -344,11 +365,11 @@
         <div class="center-zone">
             <!-- Cachet + signature -->
             <div class="stamp-signature">
-                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) ?? 'signature' }}"
-                    alt="Signature">
+                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
             </div>
+
             <div class="stamp-cachet">
-                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) ?? 'cachet' }}" alt="Cachet">
+                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
             </div>
         </div>
         <!-- Nom Directrice -->
@@ -376,6 +397,8 @@
             <div class="yellow"></div>
             <div class="red"></div>
         </div>
+    </div>
+
     </div>
 </body>
 
