@@ -295,32 +295,6 @@ class StudentImportController extends Controller
     }
 
 
-    public function downloadCanvas()
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-
-        // En-têtes
-        $headers = ['Matricule', 'Nom', 'Prénom', 'Sexe', 'Date Naissance', 'Lieu Naissance', 'Téléphone Parent', 'Nationalité'];
-        $sheet->fromArray($headers, NULL, 'A1');
-
-        // Exemple de données
-        $sheet->setCellValue('A2', '10203040');
-        $sheet->setCellValue('B2', 'NOM EXEMPLE');
-        $sheet->setCellValue('C2', 'Prénom Exemple');
-        $sheet->setCellValue('D2', 'M');
-        $sheet->setCellValue('E2', '12/05/2010');
-        $sheet->setCellValue('F2', 'Cotonou');
-        $sheet->setCellValue('G2', '0100000000');
-        $sheet->setCellValue('H2', 'BENIN');
-
-        $writer = new Xlsx($spreadsheet);
-        $fileName = 'canevas_import_eleves.xlsx';
-        $tempFile = tempnam(sys_get_temp_dir(), $fileName);
-        $writer->save($tempFile);
-
-        return response()->download($tempFile, $fileName)->deleteFileAfterSend(true);
-    }
 
     public function storeAll(Request $request)
     {
