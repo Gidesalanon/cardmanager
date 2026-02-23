@@ -49,18 +49,6 @@
             width: 25mm;
         }
 
-
-        .school-top-name {
-            font-size: 6.5pt;
-            font-weight: 900;
-        }
-
-        .school-top-tel {
-            font-size: 5pt;
-            color: #333;
-        }
-
-
         .school-top-name {
             font-size: 6.5pt;
             font-weight: 900;
@@ -76,21 +64,10 @@
             position: absolute;
             top: 7mm;
             right: 2mm;
-            border: 0.25mm solid #000;
+            border: 0.15mm solid #000;
             padding: 0.5mm 1.5mm;
             text-align: center;
         }
-
-        border: 0.15mm solid #000;
-        padding: 0.5mm 1.5mm;
-        text-align: center;
-        }
-
-        .table-label {
-            font-size: 5.5pt;
-            font-weight: bold;
-        }
-
 
         .table-label {
             min-width: 70px;
@@ -137,13 +114,6 @@
             vertical-align: top;
         }
 
-
-        .label {
-            font-weight: bold;
-            width: 16mm;
-        }
-
-
         .label {
             font-weight: bold;
             width: 16mm;
@@ -177,102 +147,53 @@
         }
 
         /* --- ÉLÉMENTS DU VERSO --- */
-
-        .verso-container {
-            text-align: center;
-            padding-top: 8mm;
-        }
-
-        .verso-school {
-            font-size: 16pt;
-            font-weight: 900;
-            margin-bottom: 1mm;
-        }
-
-        .verso-year {
-            font-size: 10pt;
-            font-weight: bold;
-        }
-
-        .qr-code {
-            width: 23mm;
-            height: 23mm;
-            margin-top: 2mm;
-        }
-
-        .verso-signature-area {
-            position: absolute;
-            bottom: 7mm;
-            right: 10mm;
-            text-align: right;
-        }
-
-        .dir-label {
-            font-size: 9pt;
-            font-weight: bold;
-            text-decoration: underline;
-        }
-
-        .credit-vertical {
-            position: absolute;
-            left: 1mm;
-            bottom: 15mm;
-            transform: rotate(-90deg);
-            transform-origin: left bottom;
-            font-size: 5pt;
-            font-weight: bold;
-            color: #444;
-        }
-
         .verso-photo {
             width: 85.6mm;
             height: 54mm;
             position: relative;
             overflow: hidden;
             background-color: white;
+            /* padding: 3px; */
         }
 
         /* Nom école */
         .school-name {
             text-align: center;
-            font-size: 14px;
+            font-size: 10px;
             font-weight: 600;
             color: #020202;
             letter-spacing: 1px;
+            padding-top: 10px;
         }
 
         /* Année */
         .school-year {
             text-align: center;
-            font-size: 12px;
+            font-size: 8px;
             margin-top: 3px;
             color: #000000;
         }
 
         /* Zone centrale */
         .center-zone {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            text-align: center;
+            /* Centre le contenu inline */
+            width: 100%;
             margin-top: 20px;
         }
 
-        /* QR */
-        .qr-left img {
-            width: 80px;
-            height: 80px;
+        .qr-left,
+        .stamp-signature,
+        .stamp-cachet {
+            display: inline-block;
+            vertical-align: middle;
+            /* Aligne les images entre elles par le milieu */
+            /* margin: 0 20px;        Espacement horizontal */
         }
 
-        /* Cachet */
-        .stamp-signature {
-            position: relative;
-            flex: 1;
-            text-align: center;
-        }
-
-        .stamp-img {
-            width: 120px;
-            opacity: 0.75;
+        .center-zone img {
+            max-width: 90px;
+            height: auto;
         }
 
         /* Label directrice */
@@ -292,17 +213,14 @@
         .director-name {
             text-align: center;
             font-weight: 700;
-            font-size: 17px;
+            font-size: 12px;
             margin-top: 5px;
             color: #050505;
         }
 
         /* Footer */
         .footer-real {
-            position: absolute;
-            bottom: 5px;
-            left: 0;
-            right: 0;
+            position: relative;
             text-align: center;
             font-size: 10px;
             color: #000000;
@@ -310,35 +228,31 @@
 
         .flag-bar {
             position: absolute;
+            bottom: 0px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            height: 1.5mm;
+            display: table;
+        }
 
-            .flag-bar {
-                position: absolute;
-                bottom: 0px;
-                left: 0;
-                right: 0;
+        .flag-bar div {
+            display: table-cell;
+            width: 33.33%;
+            height: 1%;
+        }
 
-                width: 100%;
-                height: 1.5mm;
-                display: table;
-            }
+        .green {
+            background: #008751;
+        }
 
-            .flag-bar div {
-                display: table-cell;
-                width: 33.33%;
-                height: 1%;
-            }
+        .yellow {
+            background: #fcd116;
+        }
 
-            .green {
-                background: #008751;
-            }
-
-            .yellow {
-                background: #fcd116;
-            }
-
-            .red {
-                background: #e8112d;
-            }
+        .red {
+            background: #e8112d;
+        }
     </style>
 </head>
 
@@ -361,7 +275,7 @@
             <div class="school-top-tel">Tél: {{ $eleve->ecole->telephone ?? '' }}</div>
         </div>
         <div class="table-box">
-            <div class="table-label">Numero de table</div>
+            <div class="table-label"></div>
         </div>
         <!-- Titre mis à jour : Carte d'identité scolaire -->
         <div class="card-title">CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->nom ?? '2025-2026' }}</div>
@@ -389,154 +303,59 @@
                     <td>: {{ $eleve->telephone_tuteur }}</td>
                 </tr>
             </table>
+            <div class="label-sign">Signature de l'apprenant</div>
+            <div class="sig-apprenant-box">
 
+            </div>
         </div>
-        <div class="sig-apprenant-box">Signature de l'apprenant</div>
+
         <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
-
-        <div class="label-sign">Signature de l'apprenant</div>
-        <div class="sig-apprenant-box">
-
+        <div class="flag-bar" style="bottom: 0;">
+            <div class="green"></div>
+            <div class="yellow"></div>
+            <div class="red"></div>
         </div>
     </div>
-
-
-    <div class="sig-apprenant-box">Signature de l'apprenant</div>
-
-
-
-
-    <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
-
-
-    <div class="flag-bar" style="bottom: 0;">
-        <div class="green"></div>
-        <div class="yellow"></div>
-        <div class="red"></div>
-    </div>
-    </div>
-
     {{-- ================= Verso ================= --}}
     <div class="memp-card verso-photo">
-
+        <!-- Nom établissement -->
+        <div class="school-name">
+            {{ strtoupper($eleve->ecole->nom_ecole ?? '') }}
+        </div>
+        <!-- Année scolaire -->
+        <div class="school-year">
+            ANNEE SCOLAIRE {{ $activeYear->label ?? '' }}
+        </div>
+        <!-- Zone centrale -->
+        <div class="center-zone">
+            <!-- QR à gauche -->
+            <div class="qr-left">
+                <img src="{{ public_path('storage/' . $eleve->qr_code) }}" alt="QR">
+            </div>
+            <!-- Cachet + signature -->
+            <div class="stamp-signature">
+                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
+            </div>
+            <div class="stamp-cachet">
+                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
+            </div>
+        </div>
+        <!-- Nom Directrice -->
+        <div class="director-name">
+            <span style="margin-bottom: 3px">Le Directeur <br></span>
+            {{ $eleve->ecole->directeur->prenom }}
+            {{ strtoupper($eleve->ecole->directeur->nom ?? 'DIRECTEUR') }}
+        </div>
+        <!-- Réalisation -->
+        <div class="footer-real">
+            Réal: DONAMI-CHRIST - TEL: 97 22 48 87
+        </div>
         <!-- Bande tricolore -->
         <div class="flag-bar" style="bottom: 0;">
             <div class="green"></div>
             <div class="yellow"></div>
             <div class="red"></div>
         </div>
-
-        <!-- Nom établissement -->
-        <div class="school-name">
-            {{ strtoupper($eleve->ecole->nom_ecole ?? '') }}
-        </div>
-
-        <!-- Année scolaire -->
-        <div class="school-year">
-            ANNEE SCOLAIRE {{ $activeYear->label ?? '' }}
-        </div>
-
-        <!-- Zone centrale -->
-        <div class="center-zone">
-
-            <!-- QR à gauche -->
-            <div class="qr-left">
-                <img src="{{ public_path('storage/' . $eleve->qr_code) }}" alt="QR">
-            </div>
-
-            <!-- Cachet + signature -->
-            <div class="stamp-signature">
-                <div class="director-label">La Directrice</div>
-            </div>
-
-        </div>
-
-        <!-- Nom Directrice -->
-        <div class="director-name">
-            {{ strtoupper($directeur->nom ?? 'DIRECTEUR') }}
-        </div>
-
-        <!-- Réalisation -->
-        <div class="footer-real">
-            Réal: DONAMI CHRIST TEL: 97 22 48 87
-        </div>
-
-    </div>
-
-
-    {{-- <!-- FACE VERSO -->
-    <div class="card">
-        <div class="flag-bar" style="top: 0;">
-            <div class="green"></div><div class="yellow"></div><div class="red"></div>
-        </div>
-
-        <div class="verso-container">
-            <div class="credit-vertical">Réal: DONAMI-CHRIST TEL: 97 22 48 87</div>
-
-            <h2 class="verso-school">{{ strtoupper($eleve->ecole->nom_ecole ?? 'ECOLE') }}</h2>
-            <div class="verso-year">ANNEE SCOLAIRE {{ $activeYear->nom ?? '' }}</div>
-
-            <img src="{{ public_path('storage/'.$eleve->qr_code) }}" class="qr-code">
-
-            <div class="verso-signature-area">
-                <span class="dir-label">La Directrice</span>
-                <div style="height: 10mm;"></div>
-            </div>
-        </div>
-
-        <div class="flag-bar" style="bottom: 0;">
-            <div class="green"></div><div class="yellow"></div><div class="red"></div>
-        </div>
-    </div> --}}
-
-
-    <!-- Nom établissement -->
-    <div class="school-name">
-        {{ strtoupper($eleve->ecole->nom_ecole ?? '') }}
-    </div>
-
-    <!-- Année scolaire -->
-    <div class="school-year">
-        ANNEE SCOLAIRE {{ $activeYear->label ?? '' }}
-    </div>
-
-    <!-- Zone centrale -->
-    <div class="center-zone">
-
-        <!-- QR à gauche -->
-        <div class="qr-left">
-            <img src="{{ public_path('storage/' . $eleve->qr_code) }}" alt="QR">
-        </div>
-
-        <!-- Cachet + signature -->
-        <div class="stamp-signature">
-            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
-        </div>
-
-        <div class="stamp-cachet">
-            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
-        </div>
-
-    </div>
-
-    <!-- Nom Directrice -->
-    <div class="director-name">
-        <span style="margin-bottom: 3px">Le Directeur <br></span>
-        {{ $eleve->ecole->directeur->prenom }}
-        {{ strtoupper($eleve->ecole->directeur->nom ?? 'DIRECTEUR') }}
-    </div>
-
-    <!-- Réalisation -->
-    <div class="footer-real">
-        Réal: DONAMI-CHRIST - TEL: 97 22 48 87
-    </div>
-
-    <!-- Bande tricolore -->
-    <div class="flag-bar" style="bottom: 0;">
-        <div class="green"></div>
-        <div class="yellow"></div>
-        <div class="red"></div>
-    </div>
     </div>
 </body>
 
