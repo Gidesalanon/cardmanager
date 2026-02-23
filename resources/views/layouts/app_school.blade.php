@@ -13,6 +13,7 @@
 
     {{-- CSS --}}
     <link rel="stylesheet" href="{{ asset('assets/admin/templatemo-daynight-style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     {{-- ✅ ALPINE (AJOUTÉ — OBLIGATOIRE POUR TOAST & CONFIRM) --}}
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
