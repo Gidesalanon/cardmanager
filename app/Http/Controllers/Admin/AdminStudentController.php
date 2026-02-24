@@ -53,7 +53,7 @@ class AdminStudentController extends Controller
         }
 
         if (!empty($filters['nom'])) {
-            $query->where('name', 'LIKE', '%'.$filters['nom'].'%');
+            $query->where('name', 'LIKE', '%' . $filters['nom'] . '%');
         }
 
         if (!empty($filters['sexe'])) {
@@ -238,7 +238,7 @@ class AdminStudentController extends Controller
 
     public function exportCardPdf(Eleve $eleve)
     {
-        $eleves = Eleve::with(['ecole.directeur', 'classe'])->get();
+        $eleves = Eleve::with(['ecole.directeur', 'classe.serie'])->get();
         $activeYear = \App\Models\SchoolYear::active()->first();
 
         $pdf = Pdf::loadView('admin.eleves.card.cards', compact('eleve', 'activeYear'))

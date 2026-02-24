@@ -46,7 +46,7 @@
             right: 2mm;
             text-align: right;
             line-height: 1;
-            width: 25mm;
+            width: auto;
         }
 
         .school-top-name {
@@ -247,7 +247,7 @@
         .footer-real {
             position: relative;
             text-align: center;
-            font-size: 10px;
+            font-size: 8px;
             color: #000000;
             margin-top: 5px;
         }
@@ -328,7 +328,7 @@
                 </tr>
                 <tr>
                     <td class="label">Classe</td>
-                    <td>: {{ $eleve->classe->nom }}</td>
+                    <td>: {{ $eleve->classe->nom }} {{ $eleve->classe->serie->nom }}</td>
                 </tr>
                 <tr>
                     <td class="label">Adresse</td>
@@ -388,7 +388,7 @@
 
         <!-- Réalisation -->
         <div class="footer-real">
-            Réal: DONAMI-CHRIST - TEL: 97 22 48 87
+            Réal: DONAMI-CHRIST - TEL: 01 97 22 48 87
         </div>
 
         <!-- Bande tricolore -->
