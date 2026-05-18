@@ -237,28 +237,45 @@ class AdminStudentController extends Controller
 
 
     public function exportCardPdf(Eleve $eleve)
-    {
-        $eleves = Eleve::with(['ecole.directeur', 'classe.serie'])->get();
-        $activeYear = \App\Models\SchoolYear::active()->first();
+{
+    $eleve->load(['ecole.directeur', 'classe.serie']);
+    $activeYear = \App\Models\SchoolYear::active()->first();
 
-        $pdf = Pdf::loadView('admin.eleves.card.cards', compact('eleve', 'activeYear'))
-            ->setPaper('a4', 'portrait');
+    $pdf = Pdf::loadView('admin.eleves.card.cards', compact('eleve', 'activeYear'))
+        ->setPaper([0, 0, 242.64, 153.07], 'portrait');
 
-        return $pdf->download('carte_' . $eleve->matricule_edumaster . '.pdf');
+    return $pdf->download('carte_' . $eleve->matricule_edumaster . '.pdf');
+}
+
+public function exportEcoleCardsPdf(Request $request)
+{
+    $ecoleId = $request->get('ecole_id');
+
+    if (!$ecoleId) {
+        return redirect()
+            ->route('admin.students.index')
+            ->with('error', 'Veuillez sélectionner une école.');
     }
 
-    public function exportClassCardsPdf()
-    {
-        $activeYear = \App\Models\SchoolYear::active()->first();
-        $eleves = Eleve::with(['ecole', 'classe'])->get();
+    $ecole = Ecole::with('directeur')->findOrFail($ecoleId);
+    $activeYear = \App\Models\SchoolYear::active()->first();
 
-        if ($eleves->isEmpty()) {
-            abort(404, 'Aucun élève trouvé.');
-        }
+    $eleves = Eleve::with(['ecole.directeur', 'classe.serie'])
+        ->where('ecole_id', $ecoleId)
+        ->orderBy('nom')
+        ->get();
 
-        $pdf = Pdf::loadView('admin.eleves.card.class-cards', compact('eleves', 'activeYear'))
-            ->setPaper('a4', 'landscape');
-
-        return $pdf->download('cartes_classe.pdf');
+    if ($eleves->isEmpty()) {
+        return redirect()
+            ->route('admin.students.index')
+            ->with('error', 'Aucun élève trouvé pour cette école.');
     }
+
+    $pdf = Pdf::loadView('admin.eleves.card.bulk-cards', compact('eleves', 'activeYear'))
+        ->setPaper([0, 0, 242.64, 153.07], 'portrait');
+
+    $filename = 'cartes_' . Str::slug($ecole->nom_ecole) . '.pdf';
+
+    return $pdf->download($filename);
+}
 }

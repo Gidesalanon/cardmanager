@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="utf-8">
     <style>
-        /* CONFIGURATION PAPIER ISO-CR80 */
         @page {
             size: 85.6mm 54mm;
             margin: 0;
@@ -25,12 +23,9 @@
             background-color: white;
         }
 
-        /* Saut de page pour séparer Recto et Verso */
         .page-break {
             page-break-after: always;
         }
-
-        /* --- ÉLÉMENTS DU RECTO --- */
 
         .header-logo-img {
             position: absolute;
@@ -49,15 +44,10 @@
             width: auto;
         }
 
-        .school-top-name {
-            font-size: 6.5pt;
-            font-weight: 900;
-        }
-
         .school-top-tel {
             font-size: 5pt;
             color: #333;
-            margin-top: 2px
+            margin-top: 2px;
         }
 
         .table-box {
@@ -71,7 +61,7 @@
 
         .table-label {
             min-width: 70px;
-            min-height: 7px
+            min-height: 7px;
         }
 
         .sign {
@@ -82,7 +72,6 @@
             width: 100%;
         }
 
-
         .sign-box {
             border: 0.4mm solid #000;
             margin-left: 120px;
@@ -92,7 +81,6 @@
             width: 70px;
         }
 
-        /* Titre Modifié : Taille réduite et nom changé */
         .card-title {
             position: absolute;
             top: 12.5mm;
@@ -100,7 +88,6 @@
             text-align: center;
             color: #e8112d;
             font-size: 7pt;
-            /* Taille réduite */
             font-weight: 900;
         }
 
@@ -118,7 +105,6 @@
             left: 3.5mm;
             width: 22mm;
             height: 26mm;
-            border: 0.3mm solid #000;
             object-fit: cover;
         }
 
@@ -135,7 +121,6 @@
         }
 
         .info-table td {
-            font-size: 10px;
             padding-bottom: 0.6mm;
             vertical-align: top;
         }
@@ -144,24 +129,13 @@
             font-weight: bold;
             width: 11mm;
             height: 14px;
+            font-size: 10px;
         }
 
         .label-sign {
             font-weight: bold;
             width: auto;
-            font-size: 9px
-        }
-
-        .sig-apprenant-box {
-            position: absolute;
-            bottom: 6mm;
-            right: 5mm;
-            border: 0.2mm solid #1e40af;
-            padding: 0.5mm 3mm;
-            font-size: 5.5pt;
-            font-weight: bold;
-            font-style: italic;
-            color: #1e40af;
+            font-size: 9px;
         }
 
         .educmaster-footer {
@@ -172,86 +146,35 @@
             font-weight: bold;
         }
 
-        /* --- ÉLÉMENTS DU VERSO --- */
+        /* ======= VERSO ======= */
         .verso-photo {
             width: 85.6mm;
             height: 54mm;
             position: relative;
             overflow: hidden;
             background-color: white;
-            /* padding: 3px; */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
         }
 
-        /* Nom école */
-        .school-name {
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: #020202;
-            letter-spacing: 1px;
-            padding-top: 10px;
+        /* Barre tricolore verso — centrée, largeur réduite */
+        .flag-bar-verso {
+            display: flex;
+            width: 40mm;
+            height: 1.2mm;
+            margin: 0 auto;
+        }
+        .flag-bar-verso div {
+            flex: 1;
         }
 
-        /* Année */
-        .school-year {
-            text-align: center;
-            font-size: 8px;
-            margin-top: 3px;
-            color: #000000;
-        }
+        .green  { background: #008751; }
+        .yellow { background: #fcd116; }
+        .red    { background: #e8112d; }
 
-        /* Zone centrale */
-        .center-zone {
-            text-align: center;
-            /* Centre le contenu inline */
-            width: 100%;
-            margin-top: 20px;
-        }
-
-        .stamp-signature,
-        .stamp-cachet {
-            display: inline-block;
-            vertical-align: middle;
-            margin: 0 20px;
-            /*Espacement horizontal*/
-        }
-
-        .center-zone img {
-            max-width: 100px;
-            height: auto;
-        }
-
-        /* Label directrice */
-        .director-label {
-            font-weight: bold;
-            margin-top: 5px;
-            color: #444;
-        }
-
-        /* Signature */
-        .signature-img {
-            width: 150px;
-            margin-top: -20px;
-        }
-
-        /* Nom directrice */
-        .director-name {
-            text-align: center;
-            font-weight: 700;
-            font-size: 12px;
-            margin-top: 5px;
-            color: #050505;
-        }
-
-        /* Footer */
-        .footer-real {
-            position: relative;
-            text-align: center;
-            font-size: 8px;
-            color: #000000;
-            margin-top: 5px;
-        }
-
+        /* Barre tricolore recto — pleine largeur en bas */
         .flag-bar {
             position: absolute;
             bottom: 0px;
@@ -261,49 +184,89 @@
             height: 1.5mm;
             display: table;
         }
-
         .flag-bar div {
             display: table-cell;
             width: 33.33%;
             height: 1%;
         }
-
-        .green {
-            background: #008751;
-        }
-
-        .yellow {
-            background: #fcd116;
-        }
-
-        .red {
-            background: #e8112d;
-        }
     </style>
 </head>
-
 <body>
     @php
-        $nomClasse = $eleve->classe->nom;
-        $isSecondary = preg_match('/(6ème|5ème|4ème|3ème|2nde|1ère|Tle|Terminale)/i', $nomClasse);
-
-        if ($isSecondary) {
-            $logoPath = public_path('assets/card/MESTFP.png');
-        } else {
-            $logoPath = public_path('assets/card/memp.png');
+        function dynamicFont(string $text, array $steps): string {
+            $len = mb_strlen(trim($text));
+            foreach ($steps as $limit => $size) {
+                if ($len <= $limit) return $size;
+            }
+            return end($steps);
         }
+
+        $nomClasse   = $eleve->classe->nom;
+        $isSecondary = preg_match('/(6ème|5ème|4ème|3ème|2nde|1ère|Tle|Terminale)/i', $nomClasse);
+        $logoPath    = $isSecondary
+            ? public_path('assets/card/MESTFP.png')
+            : public_path('assets/card/memp.png');
+
+        $fontNomEcoleRecto = dynamicFont($eleve->ecole->nom_ecole ?? '', [
+            18  => '6.5pt',
+            28  => '5.5pt',
+            40  => '4.8pt',
+            999 => '4pt',
+        ]);
+
+        $fontNomEcoleVerso = dynamicFont($eleve->ecole->nom_ecole ?? '', [
+            15  => '10pt',
+            22  => '9pt',
+            35  => '8pt',
+            999 => '7pt',
+        ]);
+
+        $fontNom = dynamicFont($eleve->nom ?? '', [
+            15  => '10px',
+            22  => '9px',
+            999 => '7.5px',
+        ]);
+
+        $fontPrenom = dynamicFont($eleve->prenom ?? '', [
+            20  => '10px',
+            30  => '9px',
+            999 => '7.5px',
+        ]);
+
+        $naissance     = ($eleve->date_naissance?->format('d/m/Y') ?? '') . ' à ' . ($eleve->lieu_naissance ?? '');
+        $fontNaissance = dynamicFont($naissance, [
+            22  => '10px',
+            30  => '9px',
+            999 => '7.5px',
+        ]);
+
+        $nomDirecteur     = ($eleve->ecole->directeur->prenom ?? '') . ' ' . ($eleve->ecole->directeur->nom ?? '');
+        $fontNomDirecteur = dynamicFont($nomDirecteur, [
+            15  => '10pt',
+            22  => '9pt',
+            35  => '8pt',
+            999 => '7pt',
+        ]);
+
+        $telDirecteur = $eleve->ecole->directeur->telephone ?? '';
     @endphp
-    <!-- FACE RECTO -->
+
+    <!-- ==================== RECTO ==================== -->
     <div class="card page-break">
+
         <img src="{{ $logoPath }}" class="header-logo-img">
+
         <div class="school-top-info">
-            <div class="school-top-name">{{ strtoupper($eleve->ecole->nom_ecole ?? 'ECOLE') }}</div>
+            <div style="font-size: {{ $fontNomEcoleRecto }}; font-weight: 900; line-height: 1.2;">
+                {{ strtoupper($eleve->ecole->nom_ecole ?? 'ECOLE') }}
+            </div>
             <div class="school-top-tel">Tél: {{ $eleve->ecole->telephone ?? '' }}</div>
         </div>
+
         <div class="table-box">
             <div class="table-label"></div>
         </div>
-        <!-- Titre mis à jour : Carte d'identité scolaire et QR -->
+
         <div class="qrannee">
             <div class="card-title">CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}</div>
             <div class="qr-left">
@@ -311,95 +274,171 @@
             </div>
         </div>
 
+        {{-- Photo sans bordure noire --}}
         <img src="{{ public_path('storage/' . $eleve->photo) }}" class="photo">
+
         <div class="info-container">
             <table class="info-table">
                 <tr>
                     <td class="label">Nom</td>
-                    <td>: {{ strtoupper($eleve->nom) }}</td>
+                    <td style="font-size: {{ $fontNom }};">
+                        : {{ strtoupper($eleve->nom) }}
+                    </td>
                 </tr>
                 <tr>
                     <td class="label">Prénoms</td>
-                    <td>: {{ ucwords($eleve->prenom) }}</td>
+                    <td style="font-size: {{ $fontPrenom }};">
+                        : {{ ucwords($eleve->prenom) }}
+                    </td>
                 </tr>
                 <tr>
                     <td class="label">Né(e) le</td>
-                    <td>: {{ $eleve->date_naissance?->format('d/m/Y') }} à {{ $eleve->lieu_naissance }}</td>
+                    <td style="font-size: {{ $fontNaissance }};">
+                        : {{ $eleve->date_naissance?->format('d/m/Y') }} à {{ $eleve->lieu_naissance }}
+                    </td>
                 </tr>
                 <tr>
                     <td class="label">Classe</td>
-                    <td>: {{ $eleve->classe->nom }} {{ $eleve->classe->serie->nom }}</td>
+                    <td style="font-size: 10px;">
+                        : {{ $eleve->classe->nom }}
+                        @if($eleve->classe->serie)
+                            {{ $eleve->classe->serie->nom }}
+                        @endif
+                    </td>
                 </tr>
                 <tr>
                     <td class="label">Adresse</td>
-                    <td>: {{ $eleve->telephone_tuteur }}</td>
+                    <td style="font-size: 10px;">: {{ $eleve->telephone_tuteur }}</td>
                 </tr>
             </table>
+
             <div class="sign">
                 <div class="label-sign">Signature de l'apprenant</div>
-                <div class="sign-box">
-
-                </div>
+                <div class="sign-box"></div>
             </div>
-
         </div>
 
         <div class="educmaster-footer">N° EducMaster: {{ $eleve->matricule_edumaster }}</div>
-        <div class="flag-bar" style="bottom: 0;">
+
+        <div class="flag-bar">
             <div class="green"></div>
             <div class="yellow"></div>
             <div class="red"></div>
         </div>
     </div>
-    {{-- ================= Verso ================= --}}
+
+    <!-- ==================== VERSO ==================== -->
     <div class="memp-card verso-photo">
-        <!-- Nom établissement -->
-        <div class="school-name">
+
+        {{-- 1. Barre tricolore en haut centrée --}}
+        <div style="text-align: center; margin-top: 2mm;">
+            <img src="{{ public_path('assets/card/tricolore.png') }}"
+                style="width: 40mm; height: 3.5mm; display: block; margin: 0 auto;">
+        </div>
+
+        {{-- 2. Nom de l'école — grand et gras --}}
+        <div style="
+            font-size: {{ $fontNomEcoleVerso }};
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 0.5px;
+            margin-top: 1.5mm;
+            padding: 0 3mm;
+            line-height: 1.2;
+        ">
             {{ strtoupper($eleve->ecole->nom_ecole ?? '') }}
         </div>
-        <!-- Année scolaire -->
-        <div class="school-year">
-            ANNEE SCOLAIRE {{ $activeYear->label ?? '' }}
-        </div>
-        <!-- Zone centrale -->
-        <div class="center-zone">
-            <!-- Cachet + signature -->
-            <div class="stamp-signature">
-                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}" alt="Signature">
-            </div>
 
-            <div class="stamp-cachet">
-                <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}" alt="Cachet">
-            </div>
+        {{-- 3. Téléphone directeur --}}
+        <div style="
+            text-align: center;
+            font-size: 6.5pt;
+            margin-top: 0.8mm;
+            color: #333;
+        ">
+            Tél: {{ $telDirecteur }}
         </div>
-        <!-- Nom Directrice -->
-        <div class="director-name">
-            <span>
-                @if ($eleve->ecole->directeur->sexe == 'F')
-                    La Directrice
-                @else
-                    Le Directeur
-                @endif
-                <br>
-            </span>
-            {{ $eleve->ecole->directeur->prenom }}
+
+        {{-- 4. Carte d'identité scolaire : année --}}
+        <div style="
+            text-align: center;
+            font-size: 6.5pt;
+            font-weight: 700;
+            margin-top: 0.8mm;
+            color: #000;
+        ">
+            CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}
+        </div>
+
+        {{-- 5. Cachet + Signature superposés et centrés --}}
+        <div style="
+            position: relative;
+            width: 60mm;
+            height: 16mm;
+            margin: 1.5mm auto 0 auto;
+        ">
+            {{-- CACHET en dessous centré --}}
+            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}"
+                 alt="Cachet"
+                 style="
+                    position: absolute;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 16mm;
+                    height: 16mm;
+                    object-fit: contain;
+                    opacity: 0.92;
+                 ">
+
+            {{-- SIGNATURE par-dessus centrée --}}
+            <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}"
+                 alt="Signature"
+                 style="
+                    position: absolute;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-30%, -55%);
+                    width: 28mm;
+                    height: 11mm;
+                    object-fit: contain;
+                 ">
+        </div>
+
+        {{-- 6. Le Directeur / La Directrice — gras --}}
+        <div style="
+            text-align: center;
+            font-size: 7pt;
+            font-weight: 700;
+            margin-top: 1mm;
+        ">
+            @if($eleve->ecole->directeur->sexe == 'F')
+                La Directrice
+            @else
+                Le Directeur
+            @endif
+        </div>
+
+        {{-- 7. Nom Prénom directeur — même taille que nom école --}}
+        <div style="
+            font-size: {{ $fontNomDirecteur }};
+            font-weight: 700;
+            text-align: center;
+            margin-top: 0.8mm;
+            padding: 0 3mm;
+            line-height: 1.2;
+        ">
             {{ strtoupper($eleve->ecole->directeur->nom ?? '') }}
+            {{ $eleve->ecole->directeur->prenom ?? '' }}
         </div>
 
-        <!-- Réalisation -->
-        <div class="footer-real">
-            Réal: DONAMI-CHRIST - TEL: 01 97 22 48 87
+        
+        <div style="text-align: center; margin-top: 1.5mm;">
+            <img src="{{ public_path('assets/card/tricolore.png') }}"
+                style="width: 40mm; height: 3.5mm; display: block; margin: 0 auto;">
         </div>
 
-        <!-- Bande tricolore -->
-        <div class="flag-bar" style="bottom: 0;">
-            <div class="green"></div>
-            <div class="yellow"></div>
-            <div class="red"></div>
-        </div>
     </div>
 
-    </div>
 </body>
-
 </html>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminEcoleController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ProfileController;
@@ -53,7 +54,7 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 | AUTHENTIFIÉS
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
 
     // LOGOUT (SÉCURITÉ : On définit la route explicitement ici au cas où auth.php bug)
     Route::post('logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
@@ -82,19 +83,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('school-years', SchoolYearController::class);
         Route::post('school-years/{schoolYear}/toggle', [SchoolYearController::class, 'toggle'])->name('school-years.toggle');
         Route::get('classes', [ClasseController::class, 'index'])->name('classes.index');
+        Route::resource('ecoles', AdminEcoleController::class);
+
+        // ADMIN - IMPORT (AVANT le resource pour éviter les conflits)
+        Route::get('eleves/import', [AdminStudentImportController::class, 'create'])->name('students.import.create');
+        Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])->name('students.import.preview');
+        Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])->name('students.import.storeAll');
 
         // ADMIN - GESTION ÉLÈVES
         Route::resource('eleves', AdminStudentController::class)->parameters(['eleves' => 'eleve'])->names('students');
         Route::get('/students/{eleve}/export-card-pdf', [AdminStudentController::class, 'exportCardPdf'])->name('students.export.card.pdf');
         Route::get('/students/{eleve}/export-card-image', [AdminStudentController::class, 'exportCardImage'])->name('students.export.card.image');
         Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])->name('students.export.class.cards');
-
-        // ADMIN - IMPORT
-        Route::get('eleves/import', [AdminStudentImportController::class, 'create'])->name('students.import.create');
-        Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])->name('students.import.preview');
-        Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])->name('students.import.storeAll');
-        Route::get('/profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'update'])->name('profile.update');
+        Route::get('/students/export-ecole-cards', [AdminStudentController::class, 'exportEcoleCardsPdf'])->name('students.export.ecole.cards');
     });
 });
 
