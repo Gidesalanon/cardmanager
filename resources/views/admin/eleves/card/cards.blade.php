@@ -21,10 +21,18 @@
             position: relative;
             overflow: hidden;
             background-color: white;
+            page-break-after: always;
+            page-break-inside: avoid;
         }
 
-        .page-break {
-            page-break-after: always;
+        .verso {
+            width: 85.6mm;
+            height: 54mm;
+            position: relative;
+            overflow: hidden;
+            background-color: white;
+            page-break-inside: avoid;
+            page-break-after: avoid;
         }
 
         .header-logo-img {
@@ -146,49 +154,24 @@
             font-weight: bold;
         }
 
-        /* ======= VERSO ======= */
-        .verso-photo {
-            width: 85.6mm;
-            height: 54mm;
-            position: relative;
-            overflow: hidden;
-            background-color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-        }
-
-        /* Barre tricolore verso — centrée, largeur réduite */
-        .flag-bar-verso {
-            display: flex;
-            width: 40mm;
-            height: 1.2mm;
-            margin: 0 auto;
-        }
-        .flag-bar-verso div {
-            flex: 1;
-        }
-
-        .green  { background: #008751; }
-        .yellow { background: #fcd116; }
-        .red    { background: #e8112d; }
-
-        /* Barre tricolore recto — pleine largeur en bas */
         .flag-bar {
             position: absolute;
-            bottom: 0px;
+            bottom: 0;
             left: 0;
             right: 0;
             width: 100%;
             height: 1.5mm;
             display: table;
         }
+
         .flag-bar div {
             display: table-cell;
             width: 33.33%;
-            height: 1%;
         }
+
+        .green  { background: #008751; }
+        .yellow { background: #fcd116; }
+        .red    { background: #e8112d; }
     </style>
 </head>
 <body>
@@ -200,6 +183,8 @@
             }
             return end($steps);
         }
+
+        $tricolorePath = public_path('assets/card/tricolore.png');
 
         $nomClasse   = $eleve->classe->nom;
         $isSecondary = preg_match('/(6ème|5ème|4ème|3ème|2nde|1ère|Tle|Terminale)/i', $nomClasse);
@@ -215,10 +200,11 @@
         ]);
 
         $fontNomEcoleVerso = dynamicFont($eleve->ecole->nom_ecole ?? '', [
-            15  => '10pt',
-            22  => '9pt',
-            35  => '8pt',
-            999 => '7pt',
+            12  => '9.5pt',
+            20  => '8.5pt',
+            30  => '7.5pt',
+            45  => '6.5pt',
+            999 => '5.5pt',
         ]);
 
         $fontNom = dynamicFont($eleve->nom ?? '', [
@@ -240,19 +226,20 @@
             999 => '7.5px',
         ]);
 
-        $nomDirecteur     = ($eleve->ecole->directeur->prenom ?? '') . ' ' . ($eleve->ecole->directeur->nom ?? '');
-        $fontNomDirecteur = dynamicFont($nomDirecteur, [
-            15  => '10pt',
-            22  => '9pt',
-            35  => '8pt',
-            999 => '7pt',
+        $fontNomDirecteur = dynamicFont(
+            ($eleve->ecole->directeur->nom ?? '') . ' ' . ($eleve->ecole->directeur->prenom ?? ''), [
+            12  => '9.5pt',
+            20  => '8.5pt',
+            30  => '7.5pt',
+            45  => '6.5pt',
+            999 => '5.5pt',
         ]);
 
         $telDirecteur = $eleve->ecole->directeur->telephone ?? '';
     @endphp
 
     <!-- ==================== RECTO ==================== -->
-    <div class="card page-break">
+    <div class="card">
 
         <img src="{{ $logoPath }}" class="header-logo-img">
 
@@ -274,28 +261,21 @@
             </div>
         </div>
 
-        {{-- Photo sans bordure noire --}}
         <img src="{{ public_path('storage/' . $eleve->photo) }}" class="photo">
 
         <div class="info-container">
             <table class="info-table">
                 <tr>
                     <td class="label">Nom</td>
-                    <td style="font-size: {{ $fontNom }};">
-                        : {{ strtoupper($eleve->nom) }}
-                    </td>
+                    <td style="font-size: {{ $fontNom }};">: {{ strtoupper($eleve->nom) }}</td>
                 </tr>
                 <tr>
                     <td class="label">Prénoms</td>
-                    <td style="font-size: {{ $fontPrenom }};">
-                        : {{ ucwords($eleve->prenom) }}
-                    </td>
+                    <td style="font-size: {{ $fontPrenom }};">: {{ ucwords($eleve->prenom) }}</td>
                 </tr>
                 <tr>
                     <td class="label">Né(e) le</td>
-                    <td style="font-size: {{ $fontNaissance }};">
-                        : {{ $eleve->date_naissance?->format('d/m/Y') }} à {{ $eleve->lieu_naissance }}
-                    </td>
+                    <td style="font-size: {{ $fontNaissance }};">: {{ $eleve->date_naissance?->format('d/m/Y') }} à {{ $eleve->lieu_naissance }}</td>
                 </tr>
                 <tr>
                     <td class="label">Classe</td>
@@ -328,89 +308,76 @@
     </div>
 
     <!-- ==================== VERSO ==================== -->
-    <div class="memp-card verso-photo">
+    <div class="verso">
 
-        {{-- 1. Barre tricolore en haut centrée --}}
-        <div style="text-align: center; margin-top: 2mm;">
-            <img src="{{ public_path('assets/card/tricolore.png') }}"
-                style="width: 40mm; height: 3.5mm; display: block; margin: 0 auto;">
+        {{-- 1. Barre tricolore haut --}}
+        <div style="position: absolute; top: 1.5mm; left: 0; right: 0; text-align: center;">
+            <img src="{{ $tricolorePath }}"
+                 style="width: 40mm; height: 3.5mm; display: block; margin: 0 auto;">
         </div>
 
-        {{-- 2. Nom de l'école — grand et gras --}}
+        {{-- 2. Nom école --}}
         <div style="
+            position: absolute;
+            top: 6.5mm;
+            left: 0; right: 0;
+            text-align: center;
             font-size: {{ $fontNomEcoleVerso }};
             font-weight: 900;
-            text-align: center;
             letter-spacing: 0.5px;
-            margin-top: 1.5mm;
             padding: 0 3mm;
             line-height: 1.2;
-        ">
-            {{ strtoupper($eleve->ecole->nom_ecole ?? '') }}
-        </div>
+        ">{{ strtoupper($eleve->ecole->nom_ecole ?? '') }}</div>
 
         {{-- 3. Téléphone directeur --}}
         <div style="
+            position: absolute;
+            top: 13mm;
+            left: 0; right: 0;
             text-align: center;
-            font-size: 6.5pt;
-            margin-top: 0.8mm;
+            font-size: 6pt;
             color: #333;
-        ">
-            Tél: {{ $telDirecteur }}
-        </div>
+        ">Tél: {{ $telDirecteur }}</div>
 
-        {{-- 4. Carte d'identité scolaire : année --}}
+        {{-- 4. Carte d'identité scolaire --}}
         <div style="
+            position: absolute;
+            top: 16mm;
+            left: 0; right: 0;
             text-align: center;
             font-size: 6.5pt;
             font-weight: 700;
-            margin-top: 0.8mm;
-            color: #000;
-        ">
-            CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}
-        </div>
+        ">CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}</div>
 
-        {{-- 5. Cachet + Signature superposés et centrés --}}
-        <div style="
-            position: relative;
-            width: 60mm;
-            height: 16mm;
-            margin: 1.5mm auto 0 auto;
-        ">
-            {{-- CACHET en dessous centré --}}
+        {{-- 5. Cachet + Signature superposés centrés --}}
+        <div style="position: absolute; top: 19mm; left: 0; right: 0; height: 16mm;">
             <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}"
-                 alt="Cachet"
                  style="
                     position: absolute;
-                    left: 50%;
-                    top: 50%;
+                    left: 50%; top: 50%;
                     transform: translate(-50%, -50%);
-                    width: 16mm;
-                    height: 16mm;
+                    width: 16mm; height: 16mm;
                     object-fit: contain;
                     opacity: 0.92;
                  ">
-
-            {{-- SIGNATURE par-dessus centrée --}}
             <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}"
-                 alt="Signature"
                  style="
                     position: absolute;
-                    left: 50%;
-                    top: 50%;
+                    left: 50%; top: 50%;
                     transform: translate(-30%, -55%);
-                    width: 28mm;
-                    height: 11mm;
+                    width: 28mm; height: 11mm;
                     object-fit: contain;
                  ">
         </div>
 
-        {{-- 6. Le Directeur / La Directrice — gras --}}
+        {{-- 6. Le Directeur / La Directrice --}}
         <div style="
+            position: absolute;
+            top: 36mm;
+            left: 0; right: 0;
             text-align: center;
             font-size: 7pt;
             font-weight: 700;
-            margin-top: 1mm;
         ">
             @if($eleve->ecole->directeur->sexe == 'F')
                 La Directrice
@@ -419,12 +386,14 @@
             @endif
         </div>
 
-        {{-- 7. Nom Prénom directeur — même taille que nom école --}}
+        {{-- 7. Nom Prénom directeur --}}
         <div style="
+            position: absolute;
+            top: 39.5mm;
+            left: 0; right: 0;
+            text-align: center;
             font-size: {{ $fontNomDirecteur }};
             font-weight: 700;
-            text-align: center;
-            margin-top: 0.8mm;
             padding: 0 3mm;
             line-height: 1.2;
         ">
@@ -432,10 +401,9 @@
             {{ $eleve->ecole->directeur->prenom ?? '' }}
         </div>
 
-        
-        <div style="text-align: center; margin-top: 1.5mm;">
-            <img src="{{ public_path('assets/card/tricolore.png') }}"
-                style="width: 40mm; height: 3.5mm; display: block; margin: 0 auto;">
+        {{-- 8. Barre tricolore bas --}}
+        <div style="position:absolute; top:48mm; left:0; right:0; text-align:center;">
+            <img src="{{ $tricolorePath }}" style="width:40mm; height:1.5mm; display:block; margin:0 auto;">
         </div>
 
     </div>
