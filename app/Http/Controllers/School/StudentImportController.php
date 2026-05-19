@@ -216,7 +216,7 @@ class StudentImportController extends Controller
                     'nationalite'      => $getVal('nationalite') ?: 'BENIN',
                     'date_naissance'   => $dateNaiss,
                     'lieu_naissance'   => $lieuNaiss ?: '',
-                    'telephone_tuteur' => $getVal('telephone') ?: '00000000',
+                    'telephone_tuteur' => $getVal('telephone') ?: (auth()->user()->ecole->telephone ?? '00000000'),
                 ];
             }
             Log::info('Total students: ' . count($students));
@@ -336,8 +336,8 @@ class StudentImportController extends Controller
                         Log::info("Photo enregistrée: " . $photoPath);
                     }
                     // Génération QR
-                    $qrContent = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
-                    $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
+                    $qrContent  = 'Nom: ' . $s['nom'] . "\nPrenom: " . $s['prenom'] . "\nEducMaster: " . ($s['matricule'] ?? '');
+                    $qrCodePath = 'eleves/qrcodes/' . Str::slug($s['matricule'] ?: $s['nom'] . '_' . $index) . '.png';
                     $qrFullPath = storage_path('app/public/' . $qrCodePath);
                     if (!file_exists(dirname($qrFullPath))) {
                         mkdir(dirname($qrFullPath), 0755, true);
@@ -368,7 +368,9 @@ class StudentImportController extends Controller
                             'nationalite' => $s['nationalite'] ?? 'BENIN',
                             'date_naissance' => $s['date_naissance'],
                             'lieu_naissance' => $s['lieu_naissance'] ?? '',
-                            'telephone_tuteur' => $s['telephone_tuteur'] ?? '',
+                           'telephone_tuteur' => (!empty($s['telephone_tuteur']) && $s['telephone_tuteur'] !== '00000000')
+                                ? $s['telephone_tuteur']
+                                : ($ecole->telephone ?? '00000000'),
                             'photo' => $photoPath,
                             'matricule_edumaster' => $s['matricule'] ?? null,
                             'qr_code' => $qrCodePath,

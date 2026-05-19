@@ -55,6 +55,13 @@ class AdminStudentImportController extends Controller
 
             $images = $this->extractImagesFromExcel($worksheet);
 
+            // Récupérer le téléphone de l'école si ecole_id fourni
+            $telEcole = '00000000';
+            if ($request->filled('ecole_id')) {
+                $ecolePreview = Ecole::find($request->ecole_id);
+                $telEcole = $ecolePreview->telephone ?? '00000000';
+            }
+
             $mappingRules = [
                 'nom_prenom'  => ['nom et prenoms', 'nom & prenoms', 'nom prenoms', 'nom et prenom'],
                 'matricule'   => ['n° table', 'numero de table', 'matricule', 'identifiant'],
@@ -73,7 +80,6 @@ class AdminStudentImportController extends Controller
             $usedColumns = [];
 
             Log::info('=== ADMIN IMPORT DEBUG START ===');
-            Log::info('Highest Row: ' . $highestRow . ' | Highest Col: ' . $highestColumnLetter);
 
             for ($row = 1; $row <= 15; $row++) {
                 $rowIndices  = [];
@@ -114,13 +120,10 @@ class AdminStudentImportController extends Controller
                 }
             }
 
-            Log::info('Header row: ' . ($headerRow ?? 'NON DÉTECTÉ'));
-            Log::info('Indices: ' . json_encode($indices));
-
             if (!$headerRow) {
                 return response()->json([
                     'error'   => 'Colonnes non détectées.',
-                    'details' => 'Assurez-vous que votre fichier contient des en-têtes clairs (Nom, Prénom, Sexe, Date naissance, Lieu naissance, Téléphone parent).'
+                    'details' => 'Assurez-vous que votre fichier contient des en-têtes clairs.'
                 ], 422);
             }
 
@@ -163,21 +166,22 @@ class AdminStudentImportController extends Controller
                 $rawSexe = $getVal('sexe');
                 $s       = strtoupper(trim(Str::ascii($rawSexe)));
                 $sexe    = 'M';
-
                 if (in_array($s, ['F', 'FEMININ', 'FILLE', 'FEMME'])) {
                     $sexe = 'F';
-                } elseif (in_array($s, ['M', 'MASCULIN', 'GARCON', 'HOMME'])) {
-                    $sexe = 'M';
-                } else {
-                    if (strlen($s) > 0 && substr($s, 0, 1) === 'F') {
-                        $sexe = 'F';
-                    }
+                } elseif (strlen($s) > 0 && substr($s, 0, 1) === 'F') {
+                    $sexe = 'F';
                 }
 
                 $matricule = $getVal('matricule');
                 if (empty($matricule) || strlen($matricule) < 3) {
                     $matricule = 'ID-' . strtoupper(substr(Str::slug($nom), 0, 3)) . '-' . $row;
                 }
+
+                // Téléphone : valeur du fichier, sinon téléphone de l'école
+                $telRaw = $getVal('telephone');
+                $telephone = (!empty($telRaw) && $telRaw !== '00000000')
+                    ? $telRaw
+                    : $telEcole;
 
                 $students[] = [
                     'photo'            => $images[$row] ?? null,
@@ -188,7 +192,7 @@ class AdminStudentImportController extends Controller
                     'nationalite'      => $getVal('nationalite') ?: 'BENIN',
                     'date_naissance'   => $dateNaiss,
                     'lieu_naissance'   => $lieuNaiss ?: '',
-                    'telephone_tuteur' => $getVal('telephone') ?: '00000000',
+                    'telephone_tuteur' => $telephone,
                 ];
             }
 
@@ -198,7 +202,7 @@ class AdminStudentImportController extends Controller
             if (empty($students)) {
                 return response()->json([
                     'error'   => 'Aucune donnée d\'élève trouvée.',
-                    'details' => 'Le fichier contient des en-têtes mais aucune ligne d\'élève valide n\'a été détectée.'
+                    'details' => 'Aucune ligne valide détectée.'
                 ], 422);
             }
 
@@ -253,9 +257,9 @@ class AdminStudentImportController extends Controller
                         Storage::disk('public')->put($photoPath, $data);
                     }
 
-                    // QR Code
-                    $qrContent  = $s['matricule'] ?: $s['nom'] . '_' . $s['prenom'] . '_' . $index;
-                    $qrCodePath = 'eleves/qrcodes/' . Str::slug($qrContent) . '.png';
+                    // QR Code enrichi : Nom + Prénom + EducMaster
+                    $qrContent  = 'Nom: ' . $s['nom'] . "\nPrenom: " . $s['prenom'] . "\nEducMaster: " . ($s['matricule'] ?? '');
+                    $qrCodePath = 'eleves/qrcodes/' . Str::slug($s['matricule'] ?: $s['nom'] . '_' . $index) . '.png';
                     $qrFullPath = storage_path('app/public/' . $qrCodePath);
 
                     if (!file_exists(dirname($qrFullPath))) {
@@ -270,7 +274,7 @@ class AdminStudentImportController extends Controller
                     $classeId = $classe->id;
 
                     if (!empty($request->serie)) {
-                        $serie    = Serie::where('nom', $request->serie)->first();
+                        $serie = Serie::where('nom', $request->serie)->first();
                         if ($serie) {
                             $resolved = Classe::where('serie_id', $serie->id)
                                 ->where('nom', $classe->nom)
@@ -278,6 +282,11 @@ class AdminStudentImportController extends Controller
                             if ($resolved) $classeId = $resolved->id;
                         }
                     }
+
+                    // Téléphone : valeur élève sinon téléphone école
+                    $telephone = (!empty($s['telephone_tuteur']) && $s['telephone_tuteur'] !== '00000000')
+                        ? $s['telephone_tuteur']
+                        : ($ecole->telephone ?? '00000000');
 
                     try {
                         Eleve::create([
@@ -289,7 +298,7 @@ class AdminStudentImportController extends Controller
                             'nationalite'         => $s['nationalite'] ?? 'BENIN',
                             'date_naissance'      => $s['date_naissance'],
                             'lieu_naissance'      => $s['lieu_naissance'] ?? '',
-                            'telephone_tuteur'    => $s['telephone_tuteur'] ?? '',
+                            'telephone_tuteur'    => $telephone,
                             'photo'               => $photoPath,
                             'matricule_edumaster' => $s['matricule'] ?? null,
                             'qr_code'             => $qrCodePath,
@@ -340,13 +349,12 @@ class AdminStudentImportController extends Controller
         }
     }
 
-    // ========= COPIE EXACTE de la méthode école qui marche =========
     private function extractImagesFromExcel($worksheet)
     {
         $images = [];
         foreach ($worksheet->getDrawingCollection() as $drawing) {
             $coordinates = $drawing->getCoordinates();
-            if (preg_match('/(\d+)/', $coordinates, $matches)) {
+            if (preg_match('/[A-Z]+(\d+)/', $coordinates, $matches)) {
                 $rowNumber = (int)$matches[1];
                 $contents  = null;
                 $mime      = null;
