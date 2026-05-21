@@ -174,7 +174,7 @@ class AdminStudentImportController extends Controller
 
                 $matricule = $getVal('matricule');
                 if (empty($matricule) || strlen($matricule) < 3) {
-                    $matricule = 'ID-' . strtoupper(substr(Str::slug($nom), 0, 3)) . '-' . $row;
+                    $matricule = null; // laissé vide, modifiable
                 }
 
                 // Téléphone : valeur du fichier, sinon téléphone de l'école
@@ -241,7 +241,7 @@ class AdminStudentImportController extends Controller
                         throw new \Exception('Données critiques manquantes ligne ' . ($index + 1));
                     }
 
-                    if (!empty($s['matricule'])) {
+                   if (!empty($s['matricule']) && $s['matricule'] !== null) {
                         if (Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
                             $duplicates[]   = $s['matricule'];
                             $duplicateCount++;

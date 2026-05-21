@@ -3,18 +3,21 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class DownloadController extends Controller
 {
     public function modeleEleve()
     {
-        $path = storage_path('app/public/modeles/Model-fichier-import_eleve.xlsx');
+        $path = public_path('assets/modeles/modele_import_eleves.xlsx');
 
         if (!file_exists($path)) {
-            abort(404);
+            abort(404, 'Le fichier modèle est introuvable.');
         }
 
-        return response()->download($path, 'Model-fichier-import_eleve.xlsx');
+        return response()->download(
+            $path,
+            'modele_import_eleves.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        );
     }
 }

@@ -112,96 +112,87 @@ class StudentController extends Controller
     }
 
 
-    public function store(Request $request)
-    { 
-       $user = \Illuminate\Support\Facades\Auth::user();
-       $ecole = $user->ecole;
-        $validated = $request->validate([
-            'classe_id' => 'required|exists:classes,id',
-            'nom' => 'required|string|max:255',
-            'prenom' => 'required|string|max:255',
-            'sexe' => 'required|in:M,F',
-            'date_naissance' => 'required|date',
-            'lieu_naissance' => 'required|string|max:255',
-            'telephone_tuteur' => 'required|string|max:20',
-            'photo' => 'required|image|max:2048',
-            'matricule_edumaster' => 'required|string|unique:eleves,matricule_edumaster',
-        ]);
+   public function store(Request $request)
+{
+    $user  = \Illuminate\Support\Facades\Auth::user();
+    $ecole = $user->ecole;
 
-        
+    $validated = $request->validate([
+        'classe_id'           => 'required|exists:classes,id',
+        'nom'                 => 'required|string|max:255',
+        'prenom'              => 'required|string|max:255',
+        'sexe'                => 'required|in:M,F',
+        'date_naissance'      => 'required|date',
+        'lieu_naissance'      => 'required|string|max:255',
+        'telephone_tuteur'    => 'required|string|max:20',
+        'photo'               => 'required|image|max:2048',
+        'matricule_edumaster' => 'nullable|string|unique:eleves,matricule_edumaster',
+    ]);
 
-        // Upload photo
-        $photoPath = $request->file('photo')
-            ->store('eleves/photos', 'public');
+    $photoPath = $request->file('photo')->store('eleves/photos', 'public');
 
-        // Génération numero_table automatique
-        $numeroTable = 'TB' . str_pad(Eleve::max('id') + 1, 5, '0', STR_PAD_LEFT);
+    $qrContent  = 'Nom: ' . $validated['nom'] . "\nPrenom: " . $validated['prenom'] . "\nEducMaster: " . ($validated['matricule_edumaster'] ?? '');
+    $qrSlug     = Str::slug($validated['matricule_edumaster'] ?? $validated['nom'] . '_' . time());
+    $qrCodePath = 'eleves/qrcodes/' . $qrSlug . '.png';
+    $qrFullPath = storage_path('app/public/' . $qrCodePath);
 
-        // Génération QR
-        $qrCodePath = 'eleves/qrcodes/' . Str::slug($validated['matricule_edumaster']) . '.png';
-        $qrFullPath = storage_path('app/public/' . $qrCodePath);
-
-        if (!file_exists(dirname($qrFullPath))) {
-            mkdir(dirname($qrFullPath), 0755, true);
-        }
-
-        $qrCode = new QrCode($validated['matricule_edumaster']);
-        $writer = new PngWriter();
-        $result = $writer->write($qrCode);
-        $result->saveToFile($qrFullPath);
-
-        Eleve::create([
-            'ecole_id' => $ecole->id,
-            'classe_id' => $validated['classe_id'],
-            'nom' => $validated['nom'],
-            'prenom' => $validated['prenom'],
-            'sexe' => $validated['sexe'],
-            'date_naissance' => $validated['date_naissance'],
-            'lieu_naissance' => $validated['lieu_naissance'],
-            'telephone_tuteur' => $validated['telephone_tuteur'],
-            'photo' => $photoPath,
-            'matricule_edumaster' => $validated['matricule_edumaster'],
-            'numero_table' => $numeroTable,
-            'qr_code' => $qrCodePath,
-        ]);
-
-        return redirect()
-            ->route('school.students.index')
-            ->with('success', 'Élève enregistré avec succès.');
+    if (!file_exists(dirname($qrFullPath))) {
+        mkdir(dirname($qrFullPath), 0755, true);
     }
+
+    $writer = new PngWriter();
+    $writer->write(new QrCode($qrContent))->saveToFile($qrFullPath);
+
+    Eleve::create([
+        'ecole_id'            => $ecole->id,
+        'classe_id'           => $validated['classe_id'],
+        'nom'                 => $validated['nom'],
+        'prenom'              => $validated['prenom'],
+        'sexe'                => $validated['sexe'],
+        'date_naissance'      => $validated['date_naissance'],
+        'lieu_naissance'      => $validated['lieu_naissance'],
+        'telephone_tuteur'    => $validated['telephone_tuteur'],
+        'photo'               => $photoPath,
+        'matricule_edumaster' => $validated['matricule_edumaster'] ?? null,
+        'qr_code'             => $qrCodePath,
+    ]);
+
+    return redirect()
+        ->route('school.students.index')
+        ->with('success', 'Élève enregistré avec succès.');
+}
+
+public function update(Request $request, Eleve $eleve)
+{
+    $validated = $request->validate([
+        'nom'                 => 'required|string|max:255',
+        'prenom'              => 'required|string|max:255',
+        'sexe'                => 'required|in:M,F',
+        'date_naissance'      => 'nullable|date',
+        'lieu_naissance'      => 'nullable|string|max:255',
+        'telephone_tuteur'    => 'required|string|max:20',
+        'photo'               => 'nullable|image|max:2048',
+        'matricule_edumaster' => 'nullable|string|unique:eleves,matricule_edumaster,' . $eleve->id,
+    ]);
+
+    if ($request->hasFile('photo')) {
+        if ($eleve->photo && Storage::disk('public')->exists($eleve->photo)) {
+            Storage::disk('public')->delete($eleve->photo);
+        }
+        $validated['photo'] = $request->file('photo')->store('eleves/photos', 'public');
+    }
+
+    $eleve->update($validated);
+
+    return redirect()
+        ->route('school.students.index')
+        ->with('success', 'Élève modifié avec succès.');
+}
 
     public function edit(Eleve $eleve)
     {
         $classes = Classe::orderBy('nom')->get();
         return view('school.eleves.edit', compact('eleve', 'classes'));
-    }
-
-    public function update(Request $request, Eleve $eleve)
-    {
-        $validated = $request->validate([
-            'nom' => 'required|string|max:255',
-            'prenom' => 'required|string|max:255',
-            'sexe' => 'required|in:M,F',
-            'date_naissance' => 'nullable|date',
-            'lieu_naissance' => 'nullable|string|max:255',
-            'telephone_tuteur' => 'required|string|max:20',
-            'photo' => 'nullable|image|max:2048',
-        ]);
-
-        if ($request->hasFile('photo')) {
-            if ($eleve->photo && Storage::disk('public')->exists($eleve->photo)) {
-                Storage::disk('public')->delete($eleve->photo);
-            }
-
-            $validated['photo'] = $request->file('photo')
-                ->store('eleves/photos', 'public');
-        }
-
-        $eleve->update($validated);
-
-        return redirect()
-            ->route('school.students.index')
-            ->with('success', 'Élève modifié avec succès.');
     }
 
     public function destroy(Eleve $eleve)

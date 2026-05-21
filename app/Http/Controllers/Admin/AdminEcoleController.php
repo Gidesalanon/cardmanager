@@ -35,28 +35,19 @@ class AdminEcoleController extends Controller
             'directeur.sexe'            => 'nullable|in:M,F',
             'directeur.telephone'       => 'nullable|string|max:20',
             'directeur.email'           => 'nullable|email',
-            'directeur.signature'       => 'required|image|mimes:png,jpg,jpeg',
-            'directeur.cachet'          => 'required|image|mimes:png,jpg,jpeg',
+            'directeur.signature'       => 'nullable|image|mimes:png,jpg,jpeg',
+            'directeur.cachet'          => 'nullable|image|mimes:png,jpg,jpeg',
         ], [
-            'ecole.nom.required'                    => "Le nom de l'école est obligatoire.",
-            'ecole.nom.unique'                      => "Une école avec ce nom existe déjà.",
-            'ecole.numero_autorisation.required'    => "Le numéro d'autorisation est obligatoire.",
-            'ecole.numero_autorisation.unique'      => "Ce numéro d'autorisation est déjà utilisé.",
-            'directeur.nom.required'                => "Le nom du directeur est obligatoire.",
-            'directeur.prenom.required'             => "Le prénom du directeur est obligatoire.",
-            'directeur.email.email'                 => "L'adresse email du directeur n'est pas valide.",
-            'directeur.sexe.in'                     => "Le sexe doit être M ou F.",
-            'directeur.signature.required'          => "La signature du directeur est obligatoire.",
-            'directeur.signature.image'             => "La signature doit être une image.",
-            'directeur.signature.mimes'             => "La signature doit être en format PNG, JPG ou JPEG.",
-            'directeur.cachet.required'             => "Le cachet est obligatoire.",
-            'directeur.cachet.image'                => "Le cachet doit être une image.",
-            'directeur.cachet.mimes'                => "Le cachet doit être en format PNG, JPG ou JPEG.",
+            'ecole.nom.required'                 => "Le nom de l'école est obligatoire.",
+            'ecole.nom.unique'                   => "Une école avec ce nom existe déjà.",
+            'ecole.numero_autorisation.required' => "Le numéro d'autorisation est obligatoire.",
+            'ecole.numero_autorisation.unique'   => "Ce numéro d'autorisation est déjà utilisé.",
+            'directeur.nom.required'             => "Le nom du directeur est obligatoire.",
+            'directeur.prenom.required'          => "Le prénom du directeur est obligatoire.",
         ]);
 
         DB::transaction(function () use ($request) {
 
-            // 1. Création école (user_id null — créée par l'admin)
             $ecole = Ecole::create([
                 'user_id'             => null,
                 'nom_ecole'           => $request->ecole['nom'],
@@ -65,14 +56,19 @@ class AdminEcoleController extends Controller
                 'adresse_ecole'       => $request->ecole['adresse'] ?? null,
             ]);
 
-            // 2. Upload signature & cachet
-            $signaturePath = $request->file('directeur.signature')
-                ->store('directeurs/signatures', 'public');
+            $signaturePath = null;
+            $cachetPath    = null;
 
-            $cachetPath = $request->file('directeur.cachet')
-                ->store('directeurs/cachets', 'public');
+            if ($request->hasFile('directeur.signature')) {
+                $signaturePath = $request->file('directeur.signature')
+                    ->store('directeurs/signatures', 'public');
+            }
 
-            // 3. Création directeur
+            if ($request->hasFile('directeur.cachet')) {
+                $cachetPath = $request->file('directeur.cachet')
+                    ->store('directeurs/cachets', 'public');
+            }
+
             Directeur::create([
                 'ecole_id'  => $ecole->id,
                 'nom'       => $request->directeur['nom'],
@@ -111,20 +107,10 @@ class AdminEcoleController extends Controller
             'directeur.email'           => 'nullable|email',
             'directeur.signature'       => 'nullable|image|mimes:png,jpg,jpeg',
             'directeur.cachet'          => 'nullable|image|mimes:png,jpg,jpeg',
-        ], [
-            'ecole.nom.required'                    => "Le nom de l'école est obligatoire.",
-            'ecole.nom.unique'                      => "Une école avec ce nom existe déjà.",
-            'ecole.numero_autorisation.required'    => "Le numéro d'autorisation est obligatoire.",
-            'ecole.numero_autorisation.unique'      => "Ce numéro d'autorisation est déjà utilisé.",
-            'directeur.nom.required'                => "Le nom du directeur est obligatoire.",
-            'directeur.prenom.required'             => "Le prénom du directeur est obligatoire.",
-            'directeur.email.email'                 => "L'adresse email du directeur n'est pas valide.",
-            'directeur.sexe.in'                     => "Le sexe doit être M ou F.",
         ]);
 
         DB::transaction(function () use ($request, $ecole) {
 
-            // 1. Mise à jour école
             $ecole->update([
                 'nom_ecole'           => $request->ecole['nom'],
                 'numero_autorisation' => $request->ecole['numero_autorisation'],
@@ -132,7 +118,6 @@ class AdminEcoleController extends Controller
                 'adresse_ecole'       => $request->ecole['adresse'] ?? null,
             ]);
 
-            // 2. Mise à jour directeur
             $directeur     = $ecole->directeur;
             $signaturePath = $directeur->signature;
             $cachetPath    = $directeur->cachet;
@@ -184,7 +169,6 @@ class AdminEcoleController extends Controller
                 $directeur->delete();
             }
 
-            // Supprime aussi tous les élèves liés
             foreach ($ecole->eleves as $eleve) {
                 if ($eleve->photo && Storage::disk('public')->exists($eleve->photo)) {
                     Storage::disk('public')->delete($eleve->photo);

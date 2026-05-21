@@ -112,18 +112,18 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Signature * <small style="opacity:0.6;">(PNG, JPG)</small></label>
+                        <label class="form-label">Signature <small style="opacity:0.6;">(PNG, JPG)</small></label>
                         <input type="file" name="directeur[signature]" class="form-input"
-                               accept="image/png,image/jpg,image/jpeg" required>
+                               accept="image/png,image/jpg,image/jpeg">
                         @error('directeur.signature')
                             <small class="text-danger">{{ $message }}</small>
                         @enderror
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Cachet * <small style="opacity:0.6;">(PNG, JPG)</small></label>
+                        <label class="form-label">Cachet <small style="opacity:0.6;">(PNG, JPG)</small></label>
                         <input type="file" name="directeur[cachet]" class="form-input"
-                               accept="image/png,image/jpg,image/jpeg" required>
+                               accept="image/png,image/jpg,image/jpeg">
                         @error('directeur.cachet')
                             <small class="text-danger">{{ $message }}</small>
                         @enderror

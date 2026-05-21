@@ -38,6 +38,43 @@ Route::get('/telecharger-modele-eleve', [DownloadController::class, 'modeleEleve
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+// ===== VITRINE =====
+// ===== VITRINE =====
+Route::get('/services', fn() => view('services'))->name('services');
+Route::get('/a-propos', fn() => view('apropos'))->name('apropos');
+Route::get('/contact', fn() => view('contact'))->name('contact.show');
+
+Route::post('/contact', function (\Illuminate\Http\Request $request) {
+    $request->validate([
+        'nom'     => 'required|string|max:255',
+        'email'   => 'nullable|email|max:255',
+        'telephone' => 'nullable|string|max:20',
+        'sujet'   => 'required|string',
+        'message' => 'required|string|min:10',
+    ], [
+        'nom.required'     => 'Votre nom est obligatoire.',
+        'message.required' => 'Le message est obligatoire.',
+        'message.min'      => 'Le message doit contenir au moins 10 caractères.',
+        'email.email'      => 'Adresse email invalide.',
+    ]);
+
+    try {
+        \Illuminate\Support\Facades\Mail::to('serveodeal@gmail.com')
+            ->send(new \App\Mail\ContactMail(
+                $request->nom,
+                $request->email ?? '',
+                $request->telephone ?? '',
+                $request->sujet,
+                $request->message
+            ));
+
+        return redirect()->back()->with('success', 'Votre message a bien été envoyé ! Nous vous répondrons dans les plus brefs délais.');
+    } catch (\Exception $e) {
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'Une erreur est survenue lors de l\'envoi. Contactez-nous directement par téléphone.');
+    }
+})->name('contact.send');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
@@ -68,7 +105,7 @@ Route::middleware(['auth'])->group(function () {
 
     // DASHBOARD REDIRECTION
     Route::get('/dashboard', function () {
-        return Auth::user()->usertype === 'admin'
+        return Auth::user()->role === 'admin'
             ? redirect()->route('admin.dashboard')
             : redirect()->route('school.dashboard');
     })->name('dashboard');

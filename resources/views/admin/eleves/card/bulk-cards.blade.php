@@ -37,7 +37,7 @@ $premierDirecteur = $premiereEcole->directeur;
         12 => '10px', 18 => '9px', 25 => '8px', 999 => '7px',
     ]);
     $fontPrenom = dynamicFont($eleve->prenom ?? '', [
-        15 => '10px', 22 => '9px', 30 => '8px', 999 => '7px',
+        12 => '10px', 18 => '9px', 25 => '8px', 35 => '7px', 999 => '6px',
     ]);
     $naissance     = ($eleve->date_naissance?->format('d/m/Y') ?? '') . ' à ' . ($eleve->lieu_naissance ?? '');
     $fontNaissance = dynamicFont($naissance, [
@@ -61,7 +61,7 @@ $premierDirecteur = $premiereEcole->directeur;
 
     {{-- Case Numéro de table --}}
     <div style="position:absolute; top:7mm; right:2mm; text-align:right;">
-        <div style="border:0.4mm solid #000; width:24mm; height:5px;"></div>
+        <div style="border:0.4mm solid #000; width:24mm; height:4mm;"></div>
         <div style="font-size:5pt; font-weight:600; margin-top:0.5mm; text-align:right;">Numéro de table</div>
     </div>
 
@@ -70,7 +70,7 @@ $premierDirecteur = $premiereEcole->directeur;
         CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}
     </div>
 
-    {{-- QR Code — taille réduite --}}
+    {{-- QR Code --}}
     <img src="{{ public_path('storage/' . $eleve->qr_code) }}"
          style="position:absolute; top:17mm; right:2mm; width:15mm; height:15mm; object-fit:contain;">
 
@@ -78,50 +78,49 @@ $premierDirecteur = $premiereEcole->directeur;
     <img src="{{ public_path('storage/' . $eleve->photo) }}"
          style="position:absolute; top:17mm; left:3.5mm; width:22mm; height:26mm; object-fit:cover;">
 
-    {{-- Infos élève --}}
-    <div style="position:absolute; top:17mm; left:28mm; width:40mm;">
+    {{-- Infos élève — hauteur fixe pour éviter tout débordement --}}
+    <div style="position:absolute; top:17mm; left:28mm; width:40mm; height:28mm; overflow:hidden;">
         <table style="width:100%; border-collapse:collapse;">
             <tr>
-                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.8mm; vertical-align:top;">Nom</td>
-                <td style="font-size:{{ $fontNom }}; padding-bottom:0.8mm; vertical-align:top; word-break:break-word;">: {{ strtoupper($eleve->nom) }}</td>
+                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Nom</td>
+                <td style="font-size:{{ $fontNom }}; padding-bottom:0.5mm; vertical-align:top; word-break:break-word;">: {{ strtoupper($eleve->nom) }}</td>
             </tr>
             <tr>
-                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.8mm; vertical-align:top;">Prénoms</td>
-                <td style="font-size:{{ $fontPrenom }}; padding-bottom:0.8mm; vertical-align:top; word-break:break-word;">: {{ ucwords($eleve->prenom) }}</td>
+                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Prénoms</td>
+                <td style="font-size:{{ $fontPrenom }}; padding-bottom:0.5mm; vertical-align:top; word-break:break-word;">: {{ ucwords($eleve->prenom) }}</td>
             </tr>
             <tr>
-                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.8mm; vertical-align:top;">Né(e) le</td>
-                <td style="font-size:{{ $fontNaissance }}; padding-bottom:0.8mm; vertical-align:top;">: {{ $eleve->date_naissance?->format('d/m/Y') }} à {{ $eleve->lieu_naissance }}</td>
+                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Né(e) le</td>
+                <td style="font-size:{{ $fontNaissance }}; padding-bottom:0.5mm; vertical-align:top;">: {{ $eleve->date_naissance?->format('d/m/Y') }} à {{ $eleve->lieu_naissance }}</td>
             </tr>
             <tr>
-                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.8mm; vertical-align:top;">Classe</td>
-                <td style="font-size:9px; padding-bottom:0.8mm; vertical-align:top;">
+                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Classe</td>
+                <td style="font-size:9px; padding-bottom:0.5mm; vertical-align:top;">
                     : {{ $eleve->classe->nom }}
                     @if($eleve->classe->serie) {{ $eleve->classe->serie->nom }} @endif
                 </td>
             </tr>
             <tr>
-                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.8mm; vertical-align:top;">Adresse</td>
-                <td style="font-size:9px; padding-bottom:0.8mm; vertical-align:top;">: {{ $eleve->telephone_tuteur }}</td>
+                <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Adresse</td>
+                <td style="font-size:9px; padding-bottom:0.5mm; vertical-align:top;">: {{ $eleve->telephone_tuteur }}</td>
             </tr>
-            {{-- Signature juste après Adresse dans le tableau --}}
             <tr>
-                <td style="font-weight:bold; font-size:8px; vertical-align:middle; padding-top:1mm;">Signature</td>
-                <td style="vertical-align:middle; padding-top:1mm;">
-                    <span style="display:inline-block; border:0.4mm solid #000; width:20mm; height:5mm;"></span>
+                <td style="font-weight:bold; font-size:8px; vertical-align:middle; padding-top:0.5mm;">Signature</td>
+                <td style="vertical-align:middle; padding-top:0.5mm;">
+                    <span style="display:inline-block; border:0.4mm solid #000; width:20mm; height:4mm;"></span>
                 </td>
             </tr>
         </table>
-
-        {{-- Barre tricolore sous signature --}}
-        <div style="margin-top:1mm;">
+        <div style="margin-top:0.8mm;">
             <img src="{{ $tricolorePath }}" style="width:38mm; height:2mm; display:block;">
         </div>
     </div>
 
     {{-- N° EducMaster en bas --}}
     <div style="position:absolute; bottom:2mm; left:3.5mm; font-size:7pt; font-weight:bold;">
-        N° EducMaster: {{ $eleve->matricule_edumaster }}
+        @if($eleve->matricule_edumaster)
+            N° EducMaster: {{ $eleve->matricule_edumaster }}
+        @endif
     </div>
 
 </div>
