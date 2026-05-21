@@ -125,9 +125,9 @@
     .slider-arrow:hover { background: rgba(201,168,76,0.3); }
 
     /* Slide backgrounds (gradients en attendant de vraies images) */
-    .slide-1 .slide-bg { background-image: url('assets/web/images/121.png'); background-size: cover; background-position: center; }
-    .slide-2 .slide-bg { background-image: url('assets/web/images/2001.png'); background-size: cover; background-position: center top; }
-    .slide-3 .slide-bg { background-image: url('assets/web/images/nature.jpg'); background-size: cover; background-position: center bottom; }
+    .slide-1 .slide-bg { background-image: url('{{ asset('assets/web/images/121.png') }}'); background-size: cover; background-position: center; }
+    .slide-2 .slide-bg { background-image: url('{{ asset('assets/web/images/2001.png') }}'); background-size: cover; background-position: center top; }
+    .slide-3 .slide-bg { background-image: url('{{ asset('assets/web/images/nature.jpg') }}'); background-size: cover; background-position: center bottom; }
 
     /* Éléments décoratifs slides */
     .slide-decoration {
