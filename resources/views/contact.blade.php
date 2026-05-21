@@ -20,7 +20,10 @@
 
     /* PAGE HERO */
     .page-hero {
-        background: linear-gradient(135deg, #0a0a0a 0%, #1a1000 50%, #0a0a0a 100%);
+        background: linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(26,16,0,0.75) 50%, rgba(0,0,0,0.85) 100%),
+                    url('{{ asset('assets/web/images/11.jpg') }}');
+        background-size: cover;
+        background-position: center;
         padding: 90px 20px 70px; text-align: center;
         position: relative; overflow: hidden;
         border-bottom: 1px solid rgba(201,168,76,0.2);
