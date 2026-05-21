@@ -1886,3 +1886,113 @@ tr:hover td {
 .is-invalid {
   border: 1px solid #dc3545 !important;
 }
+
+/* ===== ACCENTS DORÉS DONAMI-CHRIST ===== */
+
+:root {
+    --gold:  #c9a84c;
+    --gold2: #f0d080;
+}
+
+/* Barre de navigation — accent doré sur liens actifs */
+.nav-link.active,
+.nav-link:hover {
+    color: var(--gold) !important;
+}
+
+.nav-link.active::after {
+    background: var(--gold) !important;
+}
+
+/* Logo */
+.logo {
+    color: var(--gold) !important;
+}
+
+/* Boutons primaires → dégradé doré */
+.btn-primary {
+    background: linear-gradient(135deg, var(--gold), var(--gold2)) !important;
+    color: #0a0a0a !important;
+    border: none !important;
+    font-weight: 700 !important;
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--gold2), var(--gold)) !important;
+    box-shadow: 0 6px 20px rgba(201,168,76,0.35) !important;
+    transform: translateY(-1px);
+}
+
+/* Card header */
+.card-header {
+    border-bottom-color: rgba(201,168,76,0.2) !important;
+}
+
+/* Card title */
+.card-title {
+    color: var(--gold) !important;
+}
+
+/* Badges & stats dorés */
+.badge-gold,
+.stat-gold {
+    background: linear-gradient(135deg, var(--gold), var(--gold2));
+    color: #0a0a0a;
+    font-weight: 700;
+}
+
+/* Tableaux — ligne hover dorée */
+table tbody tr:hover {
+    background: rgba(201,168,76,0.04) !important;
+}
+
+/* Thead */
+table thead tr {
+    border-bottom: 2px solid rgba(201,168,76,0.2) !important;
+}
+
+/* Inputs focus */
+.form-input:focus {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.12) !important;
+}
+
+/* Boutons circulaires actions — hover doré */
+.circle-edit {
+    background: var(--gold) !important;
+}
+
+/* Alertes succès → doré */
+.alert-success {
+    background: rgba(201,168,76,0.08) !important;
+    border-left: 4px solid var(--gold) !important;
+    color: #92700a !important;
+}
+
+/* Pagination active */
+.btn-primary:not(:hover) {
+    transition: all 0.2s;
+}
+
+/* Top nav — border bottom dorée */
+.top-nav {
+    border-bottom: 1px solid rgba(201,168,76,0.15) !important;
+}
+
+/* Footer */
+.footer {
+    border-top: 1px solid rgba(201,168,76,0.15) !important;
+}
+.footer a {
+    color: var(--gold) !important;
+}
+
+/* Mobile menu active */
+.mobile-menu-nav a.active {
+    color: var(--gold) !important;
+    border-left: 3px solid var(--gold) !important;
+}
+
+/* Scrollbar dorée (webkit) */
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(var(--gold), var(--gold2)) !important;
+}

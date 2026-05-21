@@ -60,7 +60,7 @@
                             <polyline points="17 8 12 3 7 8"/>
                             <line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
-                        Import élèves
+                        Import
                     </a>
                 </div>
 
@@ -68,6 +68,21 @@
         </div>
 
         <div class="nav-right">
+
+            {{-- Lien vitrine --}}
+            <a href="{{ route('home') }}"
+               style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px;
+                      background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.3);
+                      border-radius:8px; color:#c9a84c; font-size:0.82rem; font-weight:600;
+                      text-decoration:none; transition:all 0.2s;"
+               title="Retour au site vitrine">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Retour à l'accueil
+            </a>
+
             <div class="theme-toggle">
                 <button class="theme-btn theme-btn-snow active" onclick="setTheme('snow')" title="Snow Edition">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
