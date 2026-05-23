@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'DONAMI-CHRIST') — Imprimerie & Communication Visuelle</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ asset('assets/web/images/favicon.png') }}">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {

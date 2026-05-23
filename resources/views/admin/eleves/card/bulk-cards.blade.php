@@ -78,8 +78,8 @@ $premierDirecteur = $premiereEcole->directeur;
     <img src="{{ public_path('storage/' . $eleve->photo) }}"
          style="position:absolute; top:17mm; left:3.5mm; width:22mm; height:26mm; object-fit:cover;">
 
-    {{-- Infos élève — hauteur fixe pour éviter tout débordement --}}
-    <div style="position:absolute; top:17mm; left:28mm; width:40mm; height:28mm; overflow:hidden;">
+    {{-- Infos élève — hauteur fixe, overflow:hidden coupe si trop long --}}
+    <div style="position:absolute; top:17mm; left:28mm; width:40mm; height:29mm; overflow:hidden;">
         <table style="width:100%; border-collapse:collapse;">
             <tr>
                 <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Nom</td>
@@ -105,23 +105,24 @@ $premierDirecteur = $premiereEcole->directeur;
                 <td style="font-size:9px; padding-bottom:0.5mm; vertical-align:top;">: {{ $eleve->telephone_tuteur }}</td>
             </tr>
             <tr>
-                <td style="font-weight:bold; font-size:8px; vertical-align:middle; padding-top:0.5mm;">Signature</td>
-                <td style="vertical-align:middle; padding-top:0.5mm;">
+                <td style="font-weight:bold; font-size:8px; vertical-align:middle; padding-top:1mm;">Signature</td>
+                <td style="vertical-align:middle; padding-top:1mm;">
                     <span style="display:inline-block; border:0.4mm solid #000; width:20mm; height:4mm;"></span>
                 </td>
             </tr>
         </table>
-        <div style="margin-top:0.8mm;">
-            <img src="{{ $tricolorePath }}" style="width:38mm; height:2mm; display:block;">
-        </div>
+    </div>
+    {{-- Barre tricolore — position absolue fixe sous la zone infos, jamais sur signature --}}
+    <div style="position:absolute; top:47mm; left:28mm;">
+        <img src="{{ $tricolorePath }}" style="width:38mm; height:2mm; display:block;">
     </div>
 
     {{-- N° EducMaster en bas --}}
-    <div style="position:absolute; bottom:2mm; left:3.5mm; font-size:7pt; font-weight:bold;">
-        @if($eleve->matricule_edumaster)
+    @if($eleve->matricule_edumaster)
+        <div style="position:absolute; bottom:1.5mm; left:3.5mm; font-size:7pt; font-weight:bold;">
             N° EducMaster: {{ $eleve->matricule_edumaster }}
-        @endif
-    </div>
+        </div>
+    @endif
 
 </div>
 {{-- ==================== FIN RECTO ==================== --}}
@@ -143,37 +144,54 @@ $premierDirecteur = $premiereEcole->directeur;
 
 <div style="width:85.6mm; height:54mm; position:relative; overflow:hidden; background-color:white; page-break-inside:avoid; page-break-after:avoid;">
 
+    {{-- 1. Barre tricolore haut --}}
     <div style="position:absolute; top:1.5mm; left:0; right:0; text-align:center;">
         <img src="{{ $tricolorePath }}" style="width:40mm; height:3.5mm; display:block; margin:0 auto;">
     </div>
 
+    {{-- 2. Nom école --}}
     <div style="position:absolute; top:6.5mm; left:0; right:0; text-align:center; font-size:{{ $fontNomEcoleVerso }}; font-weight:900; letter-spacing:0.5px; padding:0 3mm; line-height:1.2;">
         {{ strtoupper($premiereEcole->nom_ecole ?? '') }}
     </div>
 
+    {{-- 3. Téléphone directeur --}}
     <div style="position:absolute; top:13mm; left:0; right:0; text-align:center; font-size:6pt; color:#333;">
         Tél: {{ $telDirecteurVerso }}
     </div>
 
+    {{-- 4. Carte d'identité scolaire --}}
     <div style="position:absolute; top:16mm; left:0; right:0; text-align:center; font-size:6.5pt; font-weight:700;">
         CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}
     </div>
 
+    {{-- 5. Cachet + Signature superposés centrés --}}
     <div style="position:absolute; top:19mm; left:0; right:0; height:16mm;">
-        <img src="{{ public_path('storage/' . $premierDirecteur->cachet) }}"
-             style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:16mm; height:16mm; object-fit:contain; opacity:0.92;">
-        <img src="{{ public_path('storage/' . $premierDirecteur->signature) }}"
-             style="position:absolute; left:50%; top:50%; transform:translate(-30%,-55%); width:28mm; height:11mm; object-fit:contain;">
+
+        @if($premierDirecteur->cachet)
+            <img src="{{ public_path('storage/' . $premierDirecteur->cachet) }}"
+                 style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+                        width:16mm; height:16mm; object-fit:contain; opacity:0.92;">
+        @endif
+
+        @if($premierDirecteur->signature)
+            <img src="{{ public_path('storage/' . $premierDirecteur->signature) }}"
+                 style="position:absolute; left:50%; top:50%; transform:translate(-30%,-55%);
+                        width:28mm; height:11mm; object-fit:contain;">
+        @endif
+
     </div>
 
+    {{-- 6. Le Directeur / La Directrice --}}
     <div style="position:absolute; top:36mm; left:0; right:0; text-align:center; font-size:7pt; font-weight:700;">
         {{ $sexeDirVerso == 'F' ? 'La Directrice' : 'Le Directeur' }}
     </div>
 
+    {{-- 7. Nom Prénom directeur --}}
     <div style="position:absolute; top:39.5mm; left:0; right:0; text-align:center; font-size:{{ $fontNomDirecteurVerso }}; font-weight:700; padding:0 3mm; line-height:1.2;">
         {{ strtoupper($premierDirecteur->nom ?? '') }} {{ $premierDirecteur->prenom ?? '' }}
     </div>
 
+    {{-- 8. Barre tricolore bas --}}
     <div style="position:absolute; top:48mm; left:0; right:0; text-align:center;">
         <img src="{{ $tricolorePath }}" style="width:40mm; height:3.5mm; display:block; margin:0 auto;">
     </div>

@@ -17,40 +17,32 @@ use App\Http\Controllers\School\AjaxController;
 use App\Http\Controllers\Admin\AdminStudentController;
 use App\Http\Controllers\Admin\AdminStudentImportController;
 use App\Http\Controllers\DownloadController;
-use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
-| La route pour le téléchargement du modele
+| TÉLÉCHARGEMENT MODÈLE
 |--------------------------------------------------------------------------
 */
-
 Route::get('/telecharger-modele-eleve', [DownloadController::class, 'modeleEleve'])
     ->name('modele.eleve.download');
 
-
 /*
 |--------------------------------------------------------------------------
-| ACCUEIL & GUEST
+| VITRINE (accessible à tous)
 |--------------------------------------------------------------------------
 */
-
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
-// ===== VITRINE =====
-// ===== VITRINE =====
+Route::get('/', fn() => view('welcome'))->name('home');
 Route::get('/services', fn() => view('services'))->name('services');
 Route::get('/a-propos', fn() => view('apropos'))->name('apropos');
 Route::get('/contact', fn() => view('contact'))->name('contact.show');
 
 Route::post('/contact', function (\Illuminate\Http\Request $request) {
     $request->validate([
-        'nom'     => 'required|string|max:255',
-        'email'   => 'nullable|email|max:255',
+        'nom'       => 'required|string|max:255',
+        'email'     => 'nullable|email|max:255',
         'telephone' => 'nullable|string|max:20',
-        'sujet'   => 'required|string',
-        'message' => 'required|string|min:10',
+        'sujet'     => 'required|string',
+        'message'   => 'required|string|min:10',
     ], [
         'nom.required'     => 'Votre nom est obligatoire.',
         'message.required' => 'Le message est obligatoire.',
@@ -67,15 +59,18 @@ Route::post('/contact', function (\Illuminate\Http\Request $request) {
                 $request->sujet,
                 $request->message
             ));
-
         return redirect()->back()->with('success', 'Votre message a bien été envoyé ! Nous vous répondrons dans les plus brefs délais.');
     } catch (\Exception $e) {
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Une erreur est survenue lors de l\'envoi. Contactez-nous directement par téléphone.');
+        return redirect()->back()->withInput()
+            ->with('error', 'Une erreur est survenue. Contactez-nous directement par téléphone.');
     }
 })->name('contact.send');
 
+/*
+|--------------------------------------------------------------------------
+| GUEST uniquement
+|--------------------------------------------------------------------------
+*/
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store']);
@@ -85,7 +80,6 @@ Route::middleware('guest')->group(function () {
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.login');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 
-
 /*
 |--------------------------------------------------------------------------
 | AUTHENTIFIÉS
@@ -93,12 +87,18 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 */
 Route::middleware(['auth'])->group(function () {
 
-    // LOGOUT (SÉCURITÉ : On définit la route explicitement ici au cas où auth.php bug)
+    // LOGOUT → redirige vers l'accueil vitrine
     Route::post('logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 
-    // PROFIL
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    // PROFIL — redirige selon le rôle pour éviter le 403
+    Route::get('/profile', function () {
+        if (Auth::user()->role === 'admin') {
+            return redirect()->route('admin.profile.edit');
+        }
+        return app(\App\Http\Controllers\ProfileController::class)->edit(request());
+    })->name('profile.edit');
+
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::delete('/profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
@@ -116,56 +116,91 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('admin')->middleware(['admin'])->name('admin.')->group(function () {
+
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+        // Années scolaires
         Route::resource('school-years', SchoolYearController::class);
-        Route::post('school-years/{schoolYear}/toggle', [SchoolYearController::class, 'toggle'])->name('school-years.toggle');
+        Route::post('school-years/{schoolYear}/toggle', [SchoolYearController::class, 'toggle'])
+            ->name('school-years.toggle');
+
+        // Classes
         Route::get('classes', [ClasseController::class, 'index'])->name('classes.index');
+
+        // Écoles
         Route::resource('ecoles', AdminEcoleController::class);
 
-        // ADMIN - IMPORT (AVANT le resource pour éviter les conflits)
-        Route::get('eleves/import', [AdminStudentImportController::class, 'create'])->name('students.import.create');
-        Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])->name('students.import.preview');
-        Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])->name('students.import.storeAll');
+        // IMPORT (AVANT resource pour éviter conflits de routing)
+        Route::get('eleves/import', [AdminStudentImportController::class, 'create'])
+            ->name('students.import.create');
+        Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])
+            ->name('students.import.preview');
+        Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])
+            ->name('students.import.storeAll');
 
-        // ADMIN - GESTION ÉLÈVES
-        Route::resource('eleves', AdminStudentController::class)->parameters(['eleves' => 'eleve'])->names('students');
-        Route::get('/students/{eleve}/export-card-pdf', [AdminStudentController::class, 'exportCardPdf'])->name('students.export.card.pdf');
-        Route::get('/students/{eleve}/export-card-image', [AdminStudentController::class, 'exportCardImage'])->name('students.export.card.image');
-        Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])->name('students.export.class.cards');
-        Route::get('/students/export-ecole-cards', [AdminStudentController::class, 'exportEcoleCardsPdf'])->name('students.export.ecole.cards');
+        // EXPORTS (AVANT resource pour éviter conflits)
+        Route::get('/students/export-ecole-cards', [AdminStudentController::class, 'exportEcoleCardsPdf'])
+            ->name('students.export.ecole.cards');
+        Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])
+            ->name('students.export.class.cards');
+
+        // GESTION ÉLÈVES
+        Route::resource('eleves', AdminStudentController::class)
+            ->parameters(['eleves' => 'eleve'])
+            ->names('students');
+
+        Route::get('/students/{eleve}/export-card-pdf', [AdminStudentController::class, 'exportCardPdf'])
+            ->name('students.export.card.pdf');
+        Route::get('/students/{eleve}/export-card-image', [AdminStudentController::class, 'exportCardImage'])
+            ->name('students.export.card.image');
+
+        // PROFIL ADMIN
+        Route::get('/profile', [\App\Http\Controllers\Admin\AdminProfileController::class, 'edit'])
+            ->name('profile.edit');
+        Route::patch('/profile', [\App\Http\Controllers\Admin\AdminProfileController::class, 'update'])
+            ->name('profile.update');
     });
 });
 
 /*
-    |--------------------------------------------------------------------------
-    | ECOLE
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| ÉCOLE
+|--------------------------------------------------------------------------
+*/
 Route::prefix('ecole')->middleware(['ecole'])->name('school.')->group(function () {
+
     Route::get('/', [SchoolDashboardController::class, 'index'])->name('dashboard');
 
-    // MON ECOLE
+    // Mon école
     Route::get('mon-ecole/create', [EcoleController::class, 'create'])->name('ecole.create');
     Route::post('mon-ecole', [EcoleController::class, 'store'])->name('ecole.store');
     Route::get('mon-ecole', [EcoleController::class, 'show'])->name('ecole.show');
 
-        // IMPORT ÉLÈVES
-        Route::get('eleves/import', [StudentImportController::class, 'create'])->name('students.import.create');
-        Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])->name('students.import.preview');
-        Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])->name('students.import.storeAll');
-        Route::get('/school/eleves/import/canvas', [StudentImportController::class, 'downloadCanvas'])->name('school.eleves.import.canvas');
-        // GESTION ÉLÈVES
-        Route::resource('eleves', StudentController::class)->parameters(['eleves' => 'eleve'])->names('students');
+    // Import élèves (AVANT resource)
+    Route::get('eleves/import', [StudentImportController::class, 'create'])
+        ->name('students.import.create');
+    Route::post('eleves/import/preview', [StudentImportController::class, 'preview'])
+        ->name('students.import.preview');
+    Route::post('eleves/import/store-all', [StudentImportController::class, 'storeAll'])
+        ->name('students.import.storeAll');
+    Route::get('/school/eleves/import/canvas', [StudentImportController::class, 'downloadCanvas'])
+        ->name('school.eleves.import.canvas');
 
-    // CARTES
-    Route::get('eleves/voir-cartes', [StudentController::class, 'viewCards'])->name('students.viewCards');
-    Route::get('eleves/{eleve}/download-card', [StudentController::class, 'downloadCard'])->name('students.downloadCard');
+    // Gestion élèves
+    Route::resource('eleves', StudentController::class)
+        ->parameters(['eleves' => 'eleve'])
+        ->names('students');
 
-    // AJAX
+    // Cartes
+    Route::get('eleves/voir-cartes', [StudentController::class, 'viewCards'])
+        ->name('students.viewCards');
+    Route::get('eleves/{eleve}/download-card', [StudentController::class, 'downloadCard'])
+        ->name('students.downloadCard');
+
+    // Ajax
     Route::get('ajax/classes', [AjaxController::class, 'classesBySection']);
     Route::get('ajax/series', [AjaxController::class, 'seriesByClasse']);
     Route::get('ajax/partitions', [AjaxController::class, 'partitions']);
 });
-
 
 require __DIR__ . '/auth.php';

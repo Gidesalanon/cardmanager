@@ -55,7 +55,6 @@ class AdminStudentImportController extends Controller
 
             $images = $this->extractImagesFromExcel($worksheet);
 
-            // Récupérer le téléphone de l'école si ecole_id fourni
             $telEcole = '00000000';
             if ($request->filled('ecole_id')) {
                 $ecolePreview = Ecole::find($request->ecole_id);
@@ -129,11 +128,25 @@ class AdminStudentImportController extends Controller
 
             $students = [];
             for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
+
+                // ─── CORRECTIF : lecture sécurisée via getFormattedValue() ───
+                // getValue() peut retourner un float pour les cellules texte
+                // contenant de grands nombres (ex: matricules à 12-13 chiffres),
+                // ce qui provoque des faux doublons à l'enregistrement.
+                // getFormattedValue() respecte le format défini dans Excel (texte, nombre, date…).
                 $getVal = function ($field) use ($worksheet, $indices, $row) {
-                    return isset($indices[$field])
-                        ? trim((string)$worksheet->getCell($indices[$field] . $row)->getValue())
-                        : '';
+                    if (!isset($indices[$field])) return '';
+                    $cell = $worksheet->getCell($indices[$field] . $row);
+                    return trim((string) $cell->getFormattedValue());
                 };
+
+                // Lecture brute (getValue) uniquement pour les champs numériques
+                // où on veut vérifier si la cellule est un serial de date Excel.
+                $getRaw = function ($field) use ($worksheet, $indices, $row) {
+                    if (!isset($indices[$field])) return '';
+                    return $worksheet->getCell($indices[$field] . $row)->getValue();
+                };
+                // ─────────────────────────────────────────────────────────────
 
                 $nom    = '';
                 $prenom = '';
@@ -155,11 +168,11 @@ class AdminStudentImportController extends Controller
                 if (isset($indices['date_lieu'])) {
                     $raw = $getVal('date_lieu');
                     if (preg_match('/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/', $raw, $m)) {
-                        $dateNaiss = $this->formatExcelDate($m[1]);
+                        $dateNaiss = $this->formatExcelDate($getRaw('date_lieu'), $m[1]);
                         $lieuNaiss = trim(str_replace($m[1], '', $raw));
                     }
                 } else {
-                    $dateNaiss = $this->formatExcelDate($getVal('date_naiss'));
+                    $dateNaiss = $this->formatExcelDate($getRaw('date_naiss'), $getVal('date_naiss'));
                     $lieuNaiss = $getVal('lieu_naiss');
                 }
 
@@ -172,13 +185,22 @@ class AdminStudentImportController extends Controller
                     $sexe = 'F';
                 }
 
-                $matricule = $getVal('matricule');
-                if (empty($matricule) || strlen($matricule) < 3) {
-                    $matricule = null; // laissé vide, modifiable
+                // ─── CORRECTIF matricule ───────────────────────────────────
+                // getFormattedValue() garantit qu'un matricule stocké comme
+                // texte dans Excel (même s'il ressemble à un grand nombre)
+                // est lu fidèlement, sans perte de précision flottante.
+                $matricule = null;
+                if (isset($indices['matricule'])) {
+                    $rawMatricule = trim((string) $worksheet->getCell($indices['matricule'] . $row)->getFormattedValue());
+                    // Supprimer les espaces internes éventuels
+                    $rawMatricule = preg_replace('/\s+/', '', $rawMatricule);
+                    if (!empty($rawMatricule) && strlen($rawMatricule) >= 3) {
+                        $matricule = $rawMatricule;
+                    }
                 }
+                // ──────────────────────────────────────────────────────────
 
-                // Téléphone : valeur du fichier, sinon téléphone de l'école
-                $telRaw = $getVal('telephone');
+                $telRaw    = $getVal('telephone');
                 $telephone = (!empty($telRaw) && $telRaw !== '00000000')
                     ? $telRaw
                     : $telEcole;
@@ -233,20 +255,69 @@ class AdminStudentImportController extends Controller
         $errorCount     = 0;
         $duplicates     = [];
 
+        // ─── CORRECTIF : pré-vérification des doublons AVANT la transaction ─
+        //
+        // Ancienne logique : le throw à l'intérieur de DB::transaction()
+        // déclenchait un rollback immédiat et remontait une exception
+        // "doublon" même si le matricule n'existait pas réellement en base,
+        // parce que getValue() avait retourné un float mal formaté.
+        //
+        // Nouvelle logique :
+        //  1. On normalise tous les matricules en string propre.
+        //  2. On vérifie les doublons internes au fichier (deux lignes identiques).
+        //  3. On vérifie les doublons contre la base en une seule requête whereIn.
+        //  4. Si tout est OK, on fait la transaction sans aucun throw pour doublon.
+        // ──────────────────────────────────────────────────────────────────────
+
+        // 1. Normalisation : forcer chaque matricule en string propre
+        $studentsNormalized = collect($request->students)->map(function ($s) {
+            $s['matricule'] = !empty($s['matricule'])
+                ? preg_replace('/\s+/', '', trim((string) $s['matricule']))
+                : null;
+            return $s;
+        })->toArray();
+
+        // 2. Doublons internes au fichier
+        $matriculesDansFichier = collect($studentsNormalized)
+            ->pluck('matricule')
+            ->filter() // retire null et ''
+            ->values();
+
+        $doublonsInternes = $matriculesDansFichier
+            ->duplicates()
+            ->values()
+            ->toArray();
+
+        if (!empty($doublonsInternes)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le fichier contient des matricules en double : ' . implode(', ', $doublonsInternes),
+                'type'    => 'duplicate_matricule',
+            ], 422);
+        }
+
+        // 3. Doublons contre la base de données (une seule requête)
+        if ($matriculesDansFichier->isNotEmpty()) {
+            $existantsEnBase = Eleve::whereIn('matricule_edumaster', $matriculesDansFichier->toArray())
+                ->pluck('matricule_edumaster')
+                ->toArray();
+
+            if (!empty($existantsEnBase)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => count($existantsEnBase) . ' matricule(s) déjà enregistré(s) : ' . implode(', ', $existantsEnBase),
+                    'type'    => 'duplicate_matricule',
+                ], 422);
+            }
+        }
+
+        // 4. Transaction propre — plus aucun throw pour doublon ici
         try {
-            DB::transaction(function () use ($request, $ecole, &$successCount, &$duplicateCount, &$errorCount, &$duplicates) {
-                foreach ($request->students as $index => $s) {
+            DB::transaction(function () use ($studentsNormalized, $request, $ecole, &$successCount, &$errorCount) {
+                foreach ($studentsNormalized as $index => $s) {
 
                     if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
                         throw new \Exception('Données critiques manquantes ligne ' . ($index + 1));
-                    }
-
-                   if (!empty($s['matricule']) && $s['matricule'] !== null) {
-                        if (Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
-                            $duplicates[]   = $s['matricule'];
-                            $duplicateCount++;
-                            throw new \Exception('Doublon de matricule détecté: ' . $s['matricule'] . ' (ligne ' . ($index + 1) . ')');
-                        }
                     }
 
                     // Photo
@@ -257,9 +328,9 @@ class AdminStudentImportController extends Controller
                         Storage::disk('public')->put($photoPath, $data);
                     }
 
-                    // QR Code enrichi : Nom + Prénom + EducMaster
+                    // QR Code
                     $qrContent  = 'Nom: ' . $s['nom'] . "\nPrenom: " . $s['prenom'] . "\nEducMaster: " . ($s['matricule'] ?? '');
-                    $qrCodePath = 'eleves/qrcodes/' . Str::slug($s['matricule'] ?: $s['nom'] . '_' . $index) . '.png';
+                    $qrCodePath = 'eleves/qrcodes/' . Str::slug(($s['matricule'] ?: $s['nom'] . '_' . $index)) . '.png';
                     $qrFullPath = storage_path('app/public/' . $qrCodePath);
 
                     if (!file_exists(dirname($qrFullPath))) {
@@ -283,46 +354,28 @@ class AdminStudentImportController extends Controller
                         }
                     }
 
-                    // Téléphone : valeur élève sinon téléphone école
                     $telephone = (!empty($s['telephone_tuteur']) && $s['telephone_tuteur'] !== '00000000')
                         ? $s['telephone_tuteur']
                         : ($ecole->telephone ?? '00000000');
 
-                    try {
-                        Eleve::create([
-                            'ecole_id'            => $ecole->id,
-                            'classe_id'           => $classeId,
-                            'nom'                 => $s['nom'],
-                            'prenom'              => $s['prenom'],
-                            'sexe'                => $s['sexe'],
-                            'nationalite'         => $s['nationalite'] ?? 'BENIN',
-                            'date_naissance'      => $s['date_naissance'],
-                            'lieu_naissance'      => $s['lieu_naissance'] ?? '',
-                            'telephone_tuteur'    => $telephone,
-                            'photo'               => $photoPath,
-                            'matricule_edumaster' => $s['matricule'] ?? null,
-                            'qr_code'             => $qrCodePath,
-                        ]);
-                        $successCount++;
+                    Eleve::create([
+                        'ecole_id'            => $ecole->id,
+                        'classe_id'           => $classeId,
+                        'nom'                 => $s['nom'],
+                        'prenom'              => $s['prenom'],
+                        'sexe'                => $s['sexe'],
+                        'nationalite'         => $s['nationalite'] ?? 'BENIN',
+                        'date_naissance'      => $s['date_naissance'],
+                        'lieu_naissance'      => $s['lieu_naissance'] ?? '',
+                        'telephone_tuteur'    => $telephone,
+                        'photo'               => $photoPath,
+                        'matricule_edumaster' => $s['matricule'] ?? null,
+                        'qr_code'             => $qrCodePath,
+                    ]);
 
-                    } catch (\Illuminate\Database\QueryException $e) {
-                        if (str_contains($e->getMessage(), 'UNIQUE') || str_contains($e->getMessage(), 'matricule_edumaster')) {
-                            $duplicates[]   = $s['matricule'];
-                            $duplicateCount++;
-                        } else {
-                            $errorCount++;
-                        }
-                    }
+                    $successCount++;
                 }
             });
-
-            if ($duplicateCount > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "$duplicateCount doublon(s) détecté(s) : " . implode(', ', $duplicates),
-                    'stats'   => compact('successCount', 'duplicateCount', 'errorCount', 'duplicates')
-                ]);
-            }
 
             return response()->json([
                 'success' => true,
@@ -332,14 +385,6 @@ class AdminStudentImportController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur StoreAll Import Admin: ' . $e->getMessage());
-
-            if (str_contains($e->getMessage(), 'Doublon de matricule')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                    'type'    => 'duplicate_matricule'
-                ], 422);
-            }
 
             return response()->json([
                 'success' => false,
@@ -389,14 +434,31 @@ class AdminStudentImportController extends Controller
         return $images;
     }
 
-    private function formatExcelDate($value)
+    // ─── CORRECTIF formatExcelDate ─────────────────────────────────────────
+    // Signature étendue : accepte la valeur brute (getValue) ET la valeur
+    // formatée (getFormattedValue) pour distinguer serial Excel vs string date.
+    // L'ancienne signature ne prenait qu'un seul argument.
+    private function formatExcelDate($rawValue, $formattedValue = null)
     {
-        if (empty($value)) return null;
-        try {
-            if (is_numeric($value)) {
-                return Carbon::instance(Date::excelToDateTimeObject($value))->format('Y-m-d');
+        // Priorité 1 : serial numérique Excel (ex: 41733 → date)
+        if (is_numeric($rawValue) && $rawValue > 0) {
+            try {
+                return Carbon::instance(Date::excelToDateTimeObject($rawValue))->format('Y-m-d');
+            } catch (\Exception $e) {
+                // pas un serial valide, on continue
             }
+        }
+
+        // Priorité 2 : valeur formatée fournie (string "JJ/MM/AAAA" ou similaire)
+        $value = $formattedValue ?? (string) $rawValue;
+
+        if (empty($value)) return null;
+
+        try {
             if (preg_match('/(\d{2})\/(\d{2})\/(\d{4})/', $value, $m)) {
+                return "{$m[3]}-{$m[2]}-{$m[1]}";
+            }
+            if (preg_match('/(\d{2})-(\d{2})-(\d{4})/', $value, $m)) {
                 return "{$m[3]}-{$m[2]}-{$m[1]}";
             }
             return Carbon::parse($value)->format('Y-m-d');
@@ -404,4 +466,5 @@ class AdminStudentImportController extends Controller
             return null;
         }
     }
+    // ────────────────────────────────────────────────────────────────────────
 }

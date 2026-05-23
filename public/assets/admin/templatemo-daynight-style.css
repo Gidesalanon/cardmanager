@@ -27,9 +27,9 @@ https://templatemo.com/tm-608-daynight-admin
   --border-color: #e2e8f0;
   --text-primary: #1e293b;
   --text-secondary: #64748b;
-  --accent: #38bdf8;
-  --accent-hover: #0ea5e9;
-  --accent-light: rgba(56, 189, 248, 0.1);
+  --accent: #c9a84c;
+  --accent-hover: #f0d080;
+  --accent-light: rgba(201, 168, 76, 0.1);
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -48,9 +48,9 @@ body.carbon {
   --border-color: #2e2e2e;
   --text-primary: #f5f5f5;
   --text-secondary: #a3a3a3;
-  --accent: #38bdf8;
-  --accent-hover: #7dd3fc;
-  --accent-light: rgba(56, 189, 248, 0.15);
+  --accent: #c9a84c;
+  --accent-hover: #f0d080;
+  --accent-light: rgba(201, 168, 76, 0.12);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
@@ -1888,25 +1888,51 @@ tr:hover td {
 }
 
 /* ===== ACCENTS DORÉS DONAMI-CHRIST ===== */
-
+/* ===== ACCENTS DORÉS DONAMI-CHRIST ===== */
 :root {
     --gold:  #c9a84c;
     --gold2: #f0d080;
 }
 
-/* Barre de navigation — accent doré sur liens actifs */
-.nav-link.active,
-.nav-link:hover {
-    color: var(--gold) !important;
-}
-
-.nav-link.active::after {
-    background: var(--gold) !important;
-}
-
-/* Logo */
+/* Logo texte */
 .logo {
     color: var(--gold) !important;
+}
+
+/* Logo icon — fond doré au lieu de bleu */
+.logo-icon {
+    background: linear-gradient(135deg, var(--gold), var(--gold2)) !important;
+}
+.logo-icon svg { fill: #0a0a0a !important; }
+
+/* Nav liens actifs et hover */
+.nav-link.active {
+    color: var(--gold) !important;
+    background: rgba(201,168,76,0.08) !important;
+}
+.nav-link:hover {
+    color: var(--gold) !important;
+    background: rgba(201,168,76,0.06) !important;
+}
+
+/* Mobile menu actif */
+.mobile-menu-nav a.active {
+    color: var(--gold) !important;
+    background: rgba(201,168,76,0.08) !important;
+}
+.mobile-menu-nav a:hover {
+    color: var(--gold) !important;
+}
+
+/* User menu hover */
+.user-menu:hover {
+    border-color: var(--gold) !important;
+}
+
+/* User avatar — fond doré */
+.user-avatar {
+    background: linear-gradient(135deg, var(--gold), var(--gold2)) !important;
+    color: #0a0a0a !important;
 }
 
 /* Boutons primaires → dégradé doré */
@@ -1920,79 +1946,125 @@ tr:hover td {
     background: linear-gradient(135deg, var(--gold2), var(--gold)) !important;
     box-shadow: 0 6px 20px rgba(201,168,76,0.35) !important;
     transform: translateY(-1px);
+    color: #0a0a0a !important;
 }
 
-/* Card header */
-.card-header {
-    border-bottom-color: rgba(201,168,76,0.2) !important;
+/* Bouton secondaire */
+.btn-secondary {
+    border-color: rgba(201,168,76,0.3) !important;
+    color: var(--gold) !important;
+}
+.btn-secondary:hover {
+    background: rgba(201,168,76,0.08) !important;
+    border-color: var(--gold) !important;
+    color: var(--gold2) !important;
+}
+
+/* Bouton ghost */
+.btn-ghost:hover {
+    color: var(--gold) !important;
+    background: rgba(201,168,76,0.08) !important;
 }
 
 /* Card title */
-.card-title {
+.card-title { color: var(--gold) !important; }
+
+/* Card hover */
+.card:hover { box-shadow: 0 4px 20px rgba(201,168,76,0.1) !important; }
+
+/* Stat card hover */
+.stat-card:hover { border-color: var(--gold) !important; }
+
+/* Card header border */
+.card-header { border-bottom-color: rgba(201,168,76,0.15) !important; }
+
+/* Top nav border */
+.top-nav { border-bottom: 1px solid rgba(201,168,76,0.2) !important; }
+
+/* Table hover */
+table tbody tr:hover td { background: rgba(201,168,76,0.04) !important; }
+
+/* Thead */
+th { color: var(--gold) !important; }
+table thead tr { border-bottom: 2px solid rgba(201,168,76,0.2) !important; }
+
+/* Input focus */
+.form-input:focus {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.1) !important;
+}
+
+/* Badge bleu → doré */
+.badge-blue {
+    background: rgba(201,168,76,0.1) !important;
     color: var(--gold) !important;
 }
 
-/* Badges & stats dorés */
-.badge-gold,
-.stat-gold {
-    background: linear-gradient(135deg, var(--gold), var(--gold2));
-    color: #0a0a0a;
-    font-weight: 700;
+/* Activity icon bleu → doré */
+.activity-icon.blue {
+    background: rgba(201,168,76,0.1) !important;
+    color: var(--gold) !important;
 }
 
-/* Tableaux — ligne hover dorée */
-table tbody tr:hover {
-    background: rgba(201,168,76,0.04) !important;
+/* Date picker active */
+.date-btn.active {
+    color: var(--gold) !important;
 }
 
-/* Thead */
-table thead tr {
-    border-bottom: 2px solid rgba(201,168,76,0.2) !important;
-}
-
-/* Inputs focus */
-.form-input:focus {
-    border-color: var(--gold) !important;
-    box-shadow: 0 0 0 3px rgba(201,168,76,0.12) !important;
-}
-
-/* Boutons circulaires actions — hover doré */
-.circle-edit {
-    background: var(--gold) !important;
-}
-
-/* Alertes succès → doré */
-.alert-success {
+/* Settings nav active */
+.settings-nav-link.active {
+    color: var(--gold) !important;
     background: rgba(201,168,76,0.08) !important;
+}
+
+/* Toggle checked */
+.toggle input:checked + .toggle-slider {
+    background: var(--gold) !important;
+    border-color: var(--gold) !important;
+}
+
+/* Theme btn active */
+.theme-btn.active {
+    color: var(--gold) !important;
+}
+
+/* Message item active */
+.message-item.active {
+    background: rgba(201,168,76,0.06) !important;
+    border-left-color: var(--gold) !important;
+}
+
+/* Kanban card hover */
+.kanban-card:hover {
+    border-color: var(--gold) !important;
+}
+
+/* Progress bar accent */
+.progress-fill.accent { background: var(--gold) !important; }
+
+/* Alert success */
+.alert-success {
+    background: rgba(201,168,76,0.07) !important;
     border-left: 4px solid var(--gold) !important;
     color: #92700a !important;
 }
 
-/* Pagination active */
-.btn-primary:not(:hover) {
-    transition: all 0.2s;
-}
-
-/* Top nav — border bottom dorée */
-.top-nav {
-    border-bottom: 1px solid rgba(201,168,76,0.15) !important;
-}
-
 /* Footer */
-.footer {
-    border-top: 1px solid rgba(201,168,76,0.15) !important;
-}
-.footer a {
-    color: var(--gold) !important;
-}
+.footer { border-top: 1px solid rgba(201,168,76,0.15) !important; }
+.footer a { color: var(--gold) !important; }
+.footer a:hover { color: var(--gold2) !important; }
 
-/* Mobile menu active */
-.mobile-menu-nav a.active {
-    color: var(--gold) !important;
-    border-left: 3px solid var(--gold) !important;
-}
+/* Login footer links */
+.login-footer a { color: var(--gold) !important; }
+.login-footer a:hover { color: var(--gold2) !important; }
 
-/* Scrollbar dorée (webkit) */
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px !important; height: 5px !important; }
+::-webkit-scrollbar-track { background: transparent !important; }
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(var(--gold), var(--gold2)) !important;
+    background: var(--gold) !important;
+    border-radius: 3px !important;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gold2) !important;
 }

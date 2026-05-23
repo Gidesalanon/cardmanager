@@ -10,6 +10,7 @@
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
         "barryvdh/laravel-snappy": "^1.0",
+        "doctrine/dbal": "^4.4",
         "endroid/qr-code": "^6.0",
         "ilovepdf/ilovepdf-php": "^1.1",
         "inertiajs/inertia-laravel": "^2.0",
