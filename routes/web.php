@@ -51,7 +51,7 @@ Route::post('/contact', function (\Illuminate\Http\Request $request) {
     ]);
 
     try {
-        \Illuminate\Support\Facades\Mail::to('serveodeal@gmail.com')
+        \Illuminate\Support\Facades\Mail::to('contact@donami.bj')
             ->send(new \App\Mail\ContactMail(
                 $request->nom,
                 $request->email ?? '',
@@ -59,10 +59,13 @@ Route::post('/contact', function (\Illuminate\Http\Request $request) {
                 $request->sujet,
                 $request->message
             ));
+
         return redirect()->back()->with('success', 'Votre message a bien été envoyé ! Nous vous répondrons dans les plus brefs délais.');
+
     } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Erreur envoi mail contact: ' . $e->getMessage());
         return redirect()->back()->withInput()
-            ->with('error', 'Une erreur est survenue. Contactez-nous directement par téléphone.');
+            ->with('error', 'Une erreur est survenue lors de l\'envoi. Contactez-nous directement au +229 01 66 44 92 32.');
     }
 })->name('contact.send');
 
