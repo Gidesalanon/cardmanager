@@ -176,9 +176,15 @@
                     </select>
                 </div>
 
-                {{-- Sélection série (conditionnelle) --}}
+                {{--
+                    Sélection série — visible UNIQUEMENT pour 2nde, 1ère, Tle.
+                    La 3e, 4e, 5e, 6e ont des séries en base (A/B/C…) pour
+                    distinguer les classes d'un même établissement, mais la
+                    série ne s'affiche PAS sur leur carte et n'est pas
+                    sélectionnable ici.
+                --}}
                 <div x-show="showSerie" x-cloak style="flex:1; min-width:180px;">
-                    <label style="display:block; margin-bottom:5px; font-weight:600;">Série</label>
+                    <label style="display:block; margin-bottom:5px; font-weight:600;">Série *</label>
                     <select x-model="serie" class="form-input" style="width:100%;">
                         <option value="">-- Choisir la série --</option>
                         @foreach(\App\Models\Serie::orderBy('nom')->get() as $serie)
@@ -312,10 +318,19 @@ function adminImport() {
 
         checkSerie() {
             let select = document.querySelector('select[x-model="classe_id"]');
-            if (!select || !select.selectedIndex) return;
-            let nom = select.options[select.selectedIndex].getAttribute('data-nom').toLowerCase();
-            this.showSerie = nom.includes('2nde') || nom.includes('seconde') || nom.includes('1ère') || nom.includes('tle');
-            if (!this.showSerie) this.serie = '';
+            if (!select || !select.selectedIndex) { this.showSerie = false; this.serie = ''; return; }
+            let nom = select.options[select.selectedIndex].getAttribute('data-nom') ?? '';
+
+            /*
+             * La série est obligatoire UNIQUEMENT pour 2nde, 1ère et Tle.
+             * Les classes 6e, 5e, 4e, 3e ont aussi des série_id en base
+             * (pour distinguer les classes A/B/C d'un établissement),
+             * mais ce choix de série n'est pas exposé à l'utilisateur ici :
+             * il est géré lors de l'affectation à la classe côté admin.
+             */
+            const avecSerie = /^(2nde|1ère|Tle|Terminale)$/i.test(nom.trim());
+            this.showSerie = avecSerie;
+            if (!avecSerie) this.serie = '';
         },
 
         async upload() {
@@ -379,6 +394,13 @@ function adminImport() {
         async saveAll() {
             if (!this.ecole_id)  { this.notify('Choisir une école', 'error'); return; }
             if (!this.classe_id) { this.notify('Choisir une classe', 'error'); return; }
+
+            // Série obligatoire uniquement pour 2nde, 1ère, Tle
+            if (this.showSerie && !this.serie) {
+                this.notify('Choisir une série pour cette classe', 'error');
+                return;
+            }
+
             if (!this.validateStudents()) return;
 
             try {

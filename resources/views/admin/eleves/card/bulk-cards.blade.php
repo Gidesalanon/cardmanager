@@ -17,6 +17,23 @@ function dynamicFont(string $text, array $steps): string {
     }
     return end($steps);
 }
+
+/**
+ * Détermine si une classe est du secondaire (6e → Tle).
+ * Utilise les noms réels en base : 6e, 5e, 4e, 3e, 2nde, 1ère, Tle.
+ */
+function isSecondaire(string $nomClasse): bool {
+    return (bool) preg_match('/^(6e|5e|4e|3e|2nde|1ère|Tle|Terminale)$/i', trim($nomClasse));
+}
+
+/**
+ * Détermine si la série doit s'afficher sur la carte.
+ * Uniquement pour 2nde, 1ère et Tle — pas pour 6e/5e/4e/3e.
+ */
+function afficherSerie(string $nomClasse): bool {
+    return (bool) preg_match('/^(2nde|1ère|Tle|Terminale)$/i', trim($nomClasse));
+}
+
 $tricolorePath    = public_path('assets/card/tricolore.png');
 $premiereEcole    = $eleves->first()->ecole;
 $premierDirecteur = $premiereEcole->directeur;
@@ -25,7 +42,7 @@ $premierDirecteur = $premiereEcole->directeur;
 @foreach($eleves as $eleve)
 @php
     $nomClasse   = $eleve->classe->nom;
-    $isSecondary = preg_match('/(6ème|5ème|4ème|3ème|2nde|1ère|Tle|Terminale)/i', $nomClasse);
+    $isSecondary = isSecondaire($nomClasse);
     $logoPath    = $isSecondary
         ? public_path('assets/card/MESTFP.png')
         : public_path('assets/card/memp.png');
@@ -43,6 +60,12 @@ $premierDirecteur = $premiereEcole->directeur;
     $fontNaissance = dynamicFont($naissance, [
         22 => '10px', 30 => '9px', 38 => '8px', 999 => '7px',
     ]);
+
+    // Affichage classe : "3e" seul, "2nde A" avec série
+    $classeAffichee = $nomClasse;
+    if (afficherSerie($nomClasse) && $eleve->classe->serie) {
+        $classeAffichee .= ' ' . $eleve->classe->serie->nom;
+    }
 @endphp
 
 {{-- ==================== RECTO ==================== --}}
@@ -78,7 +101,7 @@ $premierDirecteur = $premiereEcole->directeur;
     <img src="{{ public_path('storage/' . $eleve->photo) }}"
          style="position:absolute; top:17mm; left:3.5mm; width:22mm; height:26mm; object-fit:cover;">
 
-    {{-- Infos élève — hauteur fixe, overflow:hidden coupe si trop long --}}
+    {{-- Infos élève --}}
     <div style="position:absolute; top:17mm; left:28mm; width:40mm; height:29mm; overflow:hidden;">
         <table style="width:100%; border-collapse:collapse;">
             <tr>
@@ -95,10 +118,7 @@ $premierDirecteur = $premiereEcole->directeur;
             </tr>
             <tr>
                 <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Classe</td>
-                <td style="font-size:9px; padding-bottom:0.5mm; vertical-align:top;">
-                    : {{ $eleve->classe->nom }}
-                    @if($eleve->classe->serie) {{ $eleve->classe->serie->nom }} @endif
-                </td>
+                <td style="font-size:9px; padding-bottom:0.5mm; vertical-align:top;">: {{ $classeAffichee }}</td>
             </tr>
             <tr>
                 <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Adresse</td>
@@ -112,7 +132,8 @@ $premierDirecteur = $premiereEcole->directeur;
             </tr>
         </table>
     </div>
-    {{-- Barre tricolore — position absolue fixe sous la zone infos, jamais sur signature --}}
+
+    {{-- Barre tricolore --}}
     <div style="position:absolute; top:47mm; left:28mm;">
         <img src="{{ $tricolorePath }}" style="width:38mm; height:2mm; display:block;">
     </div>
@@ -154,7 +175,7 @@ $premierDirecteur = $premiereEcole->directeur;
         {{ strtoupper($premiereEcole->nom_ecole ?? '') }}
     </div>
 
-    {{-- 3. Téléphone directeur --}}
+    {{-- 3. Téléphone --}}
     <div style="position:absolute; top:13mm; left:0; right:0; text-align:center; font-size:6pt; color:#333;">
         Tél: {{ $telDirecteurVerso }}
     </div>
@@ -164,21 +185,18 @@ $premierDirecteur = $premiereEcole->directeur;
         CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}
     </div>
 
-    {{-- 5. Cachet + Signature superposés centrés --}}
+    {{-- 5. Cachet + Signature --}}
     <div style="position:absolute; top:19mm; left:0; right:0; height:16mm;">
-
         @if($premierDirecteur->cachet)
             <img src="{{ public_path('storage/' . $premierDirecteur->cachet) }}"
                  style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
                         width:16mm; height:16mm; object-fit:contain; opacity:0.92;">
         @endif
-
         @if($premierDirecteur->signature)
             <img src="{{ public_path('storage/' . $premierDirecteur->signature) }}"
                  style="position:absolute; left:50%; top:50%; transform:translate(-30%,-55%);
                         width:28mm; height:11mm; object-fit:contain;">
         @endif
-
     </div>
 
     {{-- 6. Le Directeur / La Directrice --}}
