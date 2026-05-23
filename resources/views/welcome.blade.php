@@ -316,7 +316,7 @@
                     <div class="deco-icon"><i class="fa-solid fa-print"></i></div>
                 </div>
                 <div class="deco-stat">
-                    <div><div class="deco-stat-num">10k+</div></div>
+                    <div><div class="deco-stat-num">10M+</div></div>
                     <div class="deco-stat-label">Cartes produites<br>cette année</div>
                 </div>
             </div>
@@ -439,7 +439,7 @@
             <p>Écoles partenaires</p>
         </div>
         <div class="stat-item">
-            <h3>10k+</h3>
+            <h3>10M+</h3>
             <p>Cartes produites</p>
         </div>
         <div class="stat-item">

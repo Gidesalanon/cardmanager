@@ -1,390 +1,302 @@
-@extends('layouts.admin')
+@extends('layouts.app')
+
+@section('title', 'Mon profil')
 
 @section('content')
-    <div class="profile-modern-page">
 
-        {{-- ZONE DES NOTIFICATIONS À DROITE --}}
-        <div id="toast-container" class="toast-container"></div>
+<div class="page-header">
+    <h1 class="greeting">Mon profil</h1>
+    <p class="greeting-sub">Gérez vos informations personnelles et votre mot de passe</p>
+</div>
 
-        <div class="profile-header">
-            <h1>Mon Profil Administrateur</h1>
-            <p>Gestion de la sécurité et des informations du compte Master</p>
+<div style="max-width: 720px; display: flex; flex-direction: column; gap: 1.5rem;">
+
+    {{-- ===== PROFIL ===== --}}
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Informations du compte</div>
+                <div class="card-subtitle">Nom affiché et photo de profil</div>
+            </div>
         </div>
 
-        <div class="profile-card-main">
-            <form action="{{ route('admin.profile.update') }}" method="POST" enctype="multipart/form-data" autocomplete="off">
-                @csrf
-                @method('PATCH')
+        @if(session('status') === 'profile-updated')
+            <div class="alert alert-success" style="margin-bottom: 1.25rem;">
+                ✓ Profil mis à jour avec succès.
+            </div>
+        @endif
 
-                {{-- SECTION AVATAR --}}
-                <div class="avatar-section">
-                    <div class="avatar-wrapper">
-                        <img id="preview"
-                            src="{{ auth()->user()->avatar ? asset('storage/' . auth()->user()->avatar) . '?v=' . time() : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&background=3b82f6&color=fff' }}"
-                            alt="Avatar">
-                        <label for="avatar-input" class="upload-badge" title="Changer la photo">
-                            <svg viewBox="0 0 24 24" width="18" fill="none" stroke="currentColor" stroke-width="2.5">
-                                <path
-                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <circle cx="12" cy="13" r="4" />
-                            </svg>
-                            <input type="file" name="avatar" id="avatar-input" hidden accept="image/*">
-                        </label>
+        <form method="POST" action="{{ route('admin.profile.update') }}" enctype="multipart/form-data">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="action" value="profile">
+
+            {{-- Avatar --}}
+            <div class="form-group">
+                <label class="form-label">Photo de profil</label>
+                <div style="display:flex; align-items:center; gap:1rem; margin-bottom:0.5rem;">
+                    <div style="width:64px; height:64px; border-radius:12px; overflow:hidden;
+                                background: linear-gradient(135deg, #c9a84c, #f0d080);
+                                display:flex; align-items:center; justify-content:center;
+                                color:#0a0a0a; font-weight:700; font-size:1.3rem; flex-shrink:0;">
+                        @if($user->avatar)
+                            <img src="{{ asset('storage/' . $user->avatar) }}"
+                                 style="width:100%; height:100%; object-fit:cover;">
+                        @else
+                            {{ strtoupper(substr($user->name ?? 'A', 0, 1)) }}
+                        @endif
                     </div>
-                    <div class="avatar-text">
-                        <h3>Photo Administrateur</h3>
-                        <p>Format JPG, PNG ou GIF (Max 2Mo)</p>
-                    </div>
-                </div>
-
-                <div class="form-grid">
-                    {{-- IDENTITÉ --}}
-                    <div class="form-col">
-                        <h4 class="label-title">Identité Admin</h4>
-                        <div class="field-group">
-                            <label>Nom et Prénoms</label>
-                            <input type="text" name="name" value="{{ old('name', $user->name) }}">
-                        </div>
-                        <div class="field-group">
-                            <label>Adresse Email (Lecture seule)</label>
-                            <input type="email" value="{{ $user->email }}" readonly class="readonly-input">
-                        </div>
-                    </div>
-
-                    {{-- SÉCURITÉ --}}
-                    <div class="form-col">
-                        <h4 class="label-title">Validation & Sécurité</h4>
-
-                        <div class="field-group highlight-field">
-                            <label>Mot de passe actuel (Requis pour valider)</label>
-                            <div class="input-wrapper">
-                                <input type="password" name="current_password" id="current_password"
-                                    placeholder="Mot de passe actuel" autocomplete="new-password">
-                                <button type="button" class="eye-btn" onclick="togglePass('current_password')">
-                                    <svg class="eye-icon" viewBox="0 0 24 24" width="20" fill="none"
-                                        stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                        <circle cx="12" cy="12" r="3" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="field-group">
-                            <label>Nouveau mot de passe</label>
-                            <div class="input-wrapper">
-                                <input type="password" name="password" id="password" placeholder="Min. 8 caractères">
-                                <button type="button" class="eye-btn" onclick="togglePass('password')">
-                                    <svg class="eye-icon" viewBox="0 0 24 24" width="20" fill="none"
-                                        stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                        <circle cx="12" cy="12" r="3" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="field-group">
-                            <label>Confirmer nouveau mot de passe</label>
-                            <div class="input-wrapper">
-                                <input type="password" name="password_confirmation" id="password_confirm"
-                                    placeholder="Répéter le mot de passe">
-                                <button type="button" class="eye-btn" onclick="togglePass('password_confirm')">
-                                    <svg class="eye-icon" viewBox="0 0 24 24" width="20" fill="none"
-                                        stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                        <circle cx="12" cy="12" r="3" />
-                                    </svg>
-                                </button>
-                            </div>
+                    <div>
+                        <input type="file" name="avatar" id="avatar" accept="image/jpg,image/jpeg,image/png"
+                               style="font-size:0.85rem;">
+                        <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">
+                            JPG, JPEG ou PNG — max 2 Mo
                         </div>
                     </div>
                 </div>
+                @error('avatar')
+                    <div class="text-danger">{{ $message }}</div>
+                @enderror
+            </div>
 
-                <div class="actions-grid">
-                    <button type="submit" name="action" value="profile" class="save-btn-modern profile-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            {{-- Nom --}}
+            <div class="form-group">
+                <label class="form-label">Nom complet</label>
+                <input type="text" name="name" class="form-input"
+                       value="{{ old('name', $user->name) }}" required>
+                @error('name')
+                    <div class="text-danger">{{ $message }}</div>
+                @enderror
+            </div>
+
+            {{-- Email (affiché mais non modifiable ici) --}}
+            <div class="form-group">
+                <label class="form-label">Adresse email</label>
+                <input type="email" class="form-input"
+                       value="{{ $user->email }}" disabled
+                       style="opacity:0.6; cursor:not-allowed;">
+                <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">
+                    L'email ne peut pas être modifié depuis cette interface.
+                </div>
+            </div>
+
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Enregistrer le profil
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {{-- ===== MOT DE PASSE ===== --}}
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Changer le mot de passe</div>
+                <div class="card-subtitle">Utilisez un mot de passe fort d'au moins 8 caractères</div>
+            </div>
+        </div>
+
+        @if(session('status') === 'password-updated')
+            <div class="alert alert-success" style="margin-bottom: 1.25rem;">
+                ✓ Mot de passe mis à jour avec succès.
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger" style="margin-bottom: 1.25rem;">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('admin.profile.update') }}">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="action" value="password">
+
+            <div class="form-group">
+                <label class="form-label">Mot de passe actuel</label>
+                <div style="position:relative; display:flex; align-items:center;">
+                    <input id="current_password" type="password" name="current_password"
+                           class="form-input" placeholder="Votre mot de passe actuel"
+                           autocomplete="current-password"
+                           style="padding-right:42px;">
+                    <button type="button" onclick="togglePwd('current_password','eye1','eye1off')"
+                            style="position:absolute; right:12px; background:none; border:none;
+                                   cursor:pointer; color:var(--text-secondary); display:flex; align-items:center;">
+                        <svg id="eye1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
-                        Enregistrer le profil
-                    </button>
-                    
-                    <button type="submit" name="action" value="password" class="save-btn-modern password-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        <svg id="eye1off" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
                         </svg>
-                        Changer le mot de passe
                     </button>
                 </div>
-            </form>
+                @error('current_password')
+                    <div class="text-danger">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nouveau mot de passe</label>
+                <div style="position:relative; display:flex; align-items:center;">
+                    <input id="new_password" type="password" name="password"
+                           class="form-input" placeholder="Minimum 8 caractères"
+                           autocomplete="new-password"
+                           style="padding-right:42px;"
+                           oninput="checkStrength(this.value)">
+                    <button type="button" onclick="togglePwd('new_password','eye2','eye2off')"
+                            style="position:absolute; right:12px; background:none; border:none;
+                                   cursor:pointer; color:var(--text-secondary); display:flex; align-items:center;">
+                        <svg id="eye2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <svg id="eye2off" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+                        </svg>
+                    </button>
+                </div>
+                {{-- Indicateur de force --}}
+                <div style="margin-top:6px; height:4px; border-radius:2px; background:var(--bg-surface); overflow:hidden;">
+                    <div id="strengthBar" style="height:100%; border-radius:2px; transition:all 0.3s; width:0%;"></div>
+                </div>
+                <div id="strengthText" style="font-size:0.75rem; margin-top:3px; font-weight:600;"></div>
+                @error('password')
+                    <div class="text-danger">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Confirmer le nouveau mot de passe</label>
+                <div style="position:relative; display:flex; align-items:center;">
+                    <input id="confirm_password" type="password" name="password_confirmation"
+                           class="form-input" placeholder="Répétez le nouveau mot de passe"
+                           autocomplete="new-password"
+                           style="padding-right:42px;">
+                    <button type="button" onclick="togglePwd('confirm_password','eye3','eye3off')"
+                            style="position:absolute; right:12px; background:none; border:none;
+                                   cursor:pointer; color:var(--text-secondary); display:flex; align-items:center;">
+                        <svg id="eye3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <svg id="eye3off" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-top:1.25rem; display:flex; gap:1rem;">
+                <button type="submit" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Mettre à jour le mot de passe
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {{-- ===== INFOS COMPTE ===== --}}
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Informations du compte</div>
+                <div class="card-subtitle">Données non modifiables</div>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); font-weight:600;
+                            text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">
+                    Adresse email
+                </div>
+                <div style="font-size:0.9rem; font-weight:500;">{{ $user->email }}</div>
+            </div>
+            <div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); font-weight:600;
+                            text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">
+                    Rôle
+                </div>
+                <div style="font-size:0.9rem;">
+                    <span class="badge badge-blue" style="background:rgba(201,168,76,0.1); color:#c9a84c;">
+                        {{ ucfirst($user->role) }}
+                    </span>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); font-weight:600;
+                            text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">
+                    Membre depuis
+                </div>
+                <div style="font-size:0.9rem;">{{ $user->created_at->format('d/m/Y') }}</div>
+            </div>
+            <div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); font-weight:600;
+                            text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">
+                    Dernière modification
+                </div>
+                <div style="font-size:0.9rem;">{{ $user->updated_at->format('d/m/Y à H:i') }}</div>
+            </div>
         </div>
     </div>
 
-    <style>
-        /* --- DESIGN SYSTEM (Correction Couleurs Mode Sombre) --- */
-        :root {
-            --p-bg: #f8fafc;
-            --p-card: #ffffff;
-            --p-text: #0f172a;
-            --p-muted: #64748b;
-            --p-border: #e2e8f0;
-            --p-primary: #3b82f6;
+</div>
+
+@push('scripts')
+<script>
+    function togglePwd(inputId, eyeId, eyeOffId) {
+        const input  = document.getElementById(inputId);
+        const eye    = document.getElementById(eyeId);
+        const eyeOff = document.getElementById(eyeOffId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            eye.style.display    = 'none';
+            eyeOff.style.display = 'block';
+        } else {
+            input.type = 'password';
+            eye.style.display    = 'block';
+            eyeOff.style.display = 'none';
         }
+    }
 
-        /* On force les couleurs pour le mode carbone/sombre */
-        [data-theme='carbon'] .profile-modern-page,
-        .carbon .profile-modern-page {
-            --p-bg: #0f172a;
-            --p-card: #1e293b;
-            /* Couleur de carte plus claire que le fond noir */
-            --p-text: #f8fafc;
-            --p-muted: #94a3b8;
-            --p-border: #334155;
-        }
+    function checkStrength(password) {
+        const bar  = document.getElementById('strengthBar');
+        const text = document.getElementById('strengthText');
 
-        .profile-modern-page {
-            padding: 40px 20px;
-            max-width: 950px;
-            margin: 0 auto;
-            font-family: 'Inter', sans-serif;
-        }
+        let score = 0;
+        if (password.length >= 8)            score++;
+        if (password.length >= 12)           score++;
+        if (/[A-Z]/.test(password))          score++;
+        if (/[0-9]/.test(password))          score++;
+        if (/[^A-Za-z0-9]/.test(password))   score++;
 
-        .profile-card-main {
-            background: var(--p-card);
-            border-radius: 24px;
-            padding: 40px;
-            border: 1px solid var(--p-border);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-        }
+        const levels = [
+            { width: '0%',   color: 'transparent', label: '',             css: '' },
+            { width: '25%',  color: '#ef4444',      label: 'Très faible', css: 'color:#ef4444' },
+            { width: '50%',  color: '#f59e0b',      label: 'Faible',      css: 'color:#f59e0b' },
+            { width: '75%',  color: '#3b82f6',      label: 'Moyen',       css: 'color:#3b82f6' },
+            { width: '90%',  color: '#22c55e',      label: 'Fort',        css: 'color:#22c55e' },
+            { width: '100%', color: '#c9a84c',      label: '✓ Excellent', css: 'color:#c9a84c' },
+        ];
 
-        .avatar-section {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            margin-bottom: 35px;
-            border-bottom: 1px solid var(--p-border);
-            padding-bottom: 30px;
-        }
+        const level = levels[Math.min(score, 5)];
+        bar.style.width      = password.length ? level.width : '0%';
+        bar.style.background = level.color;
+        text.innerHTML       = password.length
+            ? `<span style="${level.css}">${level.label}</span>`
+            : '';
+    }
+</script>
+@endpush
 
-        .avatar-wrapper {
-            position: relative;
-            width: 100px;
-            height: 100px;
-        }
-
-        .avatar-wrapper img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--p-primary);
-            padding: 3px;
-            background: #fff;
-        }
-
-        .upload-badge {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            background: var(--p-primary);
-            color: white;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border: 3px solid var(--p-card);
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-        }
-
-        .label-title {
-            font-size: 13px;
-            font-weight: 800;
-            color: var(--p-primary);
-            text-transform: uppercase;
-            margin-bottom: 20px;
-        }
-
-        .field-group {
-            margin-bottom: 18px;
-        }
-
-        .field-group label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--p-muted);
-            margin-bottom: 8px;
-        }
-
-        .input-wrapper {
-            position: relative;
-        }
-
-        .field-group input {
-            width: 100%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            border: 1.5px solid var(--p-border);
-            background: var(--p-card);
-            color: var(--p-text);
-            transition: 0.2s;
-        }
-
-        .eye-btn {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--p-muted);
-            cursor: pointer;
-        }
-
-        .highlight-field input {
-            border-color: #3b82f6 !important;
-            background: rgba(59, 130, 246, 0.02);
-        }
-
-        .readonly-input {
-            background: var(--p-bg) !important;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-
-        .save-btn-modern {
-            width: 100%;
-            background: var(--p-primary);
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 14px;
-            font-weight: 700;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-top: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .save-btn-modern:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
-        }
-
-        .actions-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 30px;
-        }
-
-        .profile-btn {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-        }
-
-        .profile-btn:hover {
-            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
-        }
-
-        .password-btn {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .password-btn:hover {
-            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4);
-        }
-
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-        }
-
-        .toast-item {
-            min-width: 280px;
-            padding: 16px 20px;
-            border-radius: 12px;
-            color: white;
-            font-weight: bold;
-            margin-bottom: 10px;
-            animation: slideIn 0.4s ease forwards;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(120%);
-            }
-
-            to {
-                transform: translateX(0);
-            }
-        }
-    </style>
-
-    <script>
-        // 1. Fonction Toast (Réparée)
-        function createToast(text, color) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast-item';
-            toast.style.backgroundColor = color;
-            toast.innerText = text;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = "slideIn 0.4s ease reverse forwards";
-                setTimeout(() => toast.remove(), 400);
-            }, 4000);
-        }
-
-        // 2. Toggle oeil (Réparé)
-        function togglePass(id) {
-            const input = document.getElementById(id);
-            if (input) {
-                input.type = input.type === "password" ? "text" : "password";
-            }
-        }
-
-        // 3. Aperçu photo (Correction de l'erreur SyntaxError)
-        const avatarInput = document.getElementById('avatar-input');
-        if (avatarInput) {
-            avatarInput.onchange = e => {
-                const [file] = e.target.files; // <-- Le nom du fichier est maintenant correct
-                if (file) {
-                    document.getElementById('preview').src = URL.createObjectURL(file);
-                }
-            };
-        }
-
-        // 4. Lancement des notifications
-        window.onload = () => {
-            @if (session('status') === 'profile-updated')
-                createToast("Profil Admin mis à jour avec succès !", "#10b981");
-            @endif
-
-            @if (session('status') === 'password-updated')
-                createToast("Mot de passe changé avec succès !", "#10b981");
-            @endif
-
-            @if ($errors->has('current_password'))
-                createToast("Confirmer votre mot de passe d'abord", "#ef4444");
-            @elseif ($errors->any())
-                createToast("{{ $errors->first() }}", "#ef4444");
-            @endif
-        };
-    </script>
 @endsection

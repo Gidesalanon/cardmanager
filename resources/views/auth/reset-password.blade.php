@@ -23,8 +23,11 @@
         color: #c9a84c !important; text-decoration: none !important;
         font-size: 0.83rem; font-weight: 600; transition: all 0.2s; z-index: 999;
     }
-    .back-home-btn:hover { background: rgba(201,168,76,0.2) !important; color: #f0d080 !important; }
-
+    .back-home-btn:hover {
+        background: rgba(201,168,76,0.2) !important;
+        color: #f0d080 !important;
+        border-color: rgba(201,168,76,0.55);
+    }
     .login-card { padding: 36px 32px !important; }
     .login-header { text-align: center; margin-bottom: 24px; }
     .login-logo {
@@ -39,13 +42,32 @@
     .login-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
     .login-subtitle { font-size: 0.83rem; opacity: 0.6; }
     .form-group { margin-bottom: 14px; }
-    .form-label { display: block; font-size: 0.83rem; font-weight: 600; margin-bottom: 6px; opacity: 0.8; }
+    .form-label {
+        display: block; font-size: 0.83rem; font-weight: 600;
+        margin-bottom: 6px; opacity: 0.8;
+    }
     .form-input { width: 100%; padding: 11px 14px; border-radius: 9px; font-size: 0.93rem; }
     .btn.btn-primary {
         width: 100%; padding: 12px; border-radius: 10px;
-        font-size: 0.97rem; font-weight: 700; margin-bottom: 16px; margin-top: 6px;
+        font-size: 0.97rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        margin-bottom: 16px; margin-top: 6px;
     }
     .login-footer { text-align: center; font-size: 0.83rem; margin-top: 4px; opacity: 0.7; }
+
+    /* Indicateur force mot de passe */
+    .password-strength {
+        margin-top: 6px; height: 4px; border-radius: 2px;
+        background: #e2e8f0; overflow: hidden;
+    }
+    .password-strength-bar {
+        height: 100%; border-radius: 2px;
+        transition: all 0.3s; width: 0%;
+    }
+    .strength-text {
+        font-size: 0.75rem; margin-top: 4px;
+        font-weight: 600;
+    }
 </style>
 
 <a href="{{ route('home') }}" class="back-home-btn">
@@ -69,11 +91,13 @@
                     <span>{{ config('app.name') }}</span>
                 </div>
                 <h1 class="login-title">Nouveau mot de passe</h1>
-                <p class="login-subtitle">Choisissez un nouveau mot de passe sécurisé</p>
+                <p class="login-subtitle">Choisissez un mot de passe sécurisé</p>
             </div>
 
             @if ($errors->any())
-                <div class="alert alert-danger" style="padding:10px 14px; margin-bottom:16px; border-radius:8px; font-size:0.85rem;">
+                <div style="background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.3);
+                            border-radius:10px; padding:12px 16px; margin-bottom:18px;
+                            color:#dc2626; font-size:0.85rem;">
                     {{ $errors->first() }}
                 </div>
             @endif
@@ -87,7 +111,9 @@
                     <label class="form-label">Nouveau mot de passe</label>
                     <div class="password-container">
                         <input id="password" type="password" name="password"
-                               class="form-input form-input-password" required autocomplete="new-password">
+                               class="form-input form-input-password"
+                               required autocomplete="new-password"
+                               oninput="checkStrength(this.value)">
                         <button type="button" class="password-toggle"
                                 onclick="toggleVisibility('password','eye-p','eye-off-p')">
                             <svg id="eye-p" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
@@ -101,13 +127,18 @@
                             </svg>
                         </button>
                     </div>
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="strengthBar"></div>
+                    </div>
+                    <div class="strength-text" id="strengthText"></div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Confirmer le mot de passe</label>
                     <div class="password-container">
                         <input id="password_confirmation" type="password" name="password_confirmation"
-                               class="form-input form-input-password" required autocomplete="new-password">
+                               class="form-input form-input-password"
+                               required autocomplete="new-password">
                         <button type="button" class="password-toggle"
                                 onclick="toggleVisibility('password_confirmation','eye-c','eye-off-c')">
                             <svg id="eye-c" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
@@ -124,6 +155,10 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
                     Réinitialiser le mot de passe
                 </button>
             </form>
@@ -150,6 +185,32 @@
             eye.classList.remove('hidden');
             eyeOff.classList.add('hidden');
         }
+    }
+
+    function checkStrength(password) {
+        const bar  = document.getElementById('strengthBar');
+        const text = document.getElementById('strengthText');
+
+        let score = 0;
+        if (password.length >= 8)  score++;
+        if (password.length >= 12) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+
+        const levels = [
+            { width: '0%',   color: 'transparent', label: '',            css: '' },
+            { width: '25%',  color: '#ef4444',      label: 'Très faible', css: 'color:#ef4444' },
+            { width: '50%',  color: '#f59e0b',      label: 'Faible',      css: 'color:#f59e0b' },
+            { width: '75%',  color: '#3b82f6',      label: 'Moyen',       css: 'color:#3b82f6' },
+            { width: '90%',  color: '#22c55e',       label: 'Fort',        css: 'color:#22c55e' },
+            { width: '100%', color: '#c9a84c',       label: '✓ Excellent', css: 'color:#c9a84c' },
+        ];
+
+        const level = levels[Math.min(score, 5)];
+        bar.style.width      = password.length ? level.width : '0%';
+        bar.style.background = level.color;
+        text.innerHTML       = password.length ? `<span style="${level.css}">${level.label}</span>` : '';
     }
 </script>
 

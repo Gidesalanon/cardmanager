@@ -10,12 +10,12 @@ class AdminSeeder extends Seeder
     public function run(): void
     {
         User::firstOrCreate(
-            ['email' => 'serveodeal@gmail.com'],
+            ['email' => 'contact@donami.bj'],
             [
-                'name' => 'Super Admin',
-                'password' => bcrypt('password'),
-                'role' => 'admin',
-                'email_verified_at' => now(), // ✅ email déjà vérifié
+                'name'               => 'DONAMI-CHRIST Admin',
+                'password'           => bcrypt('Don@mi2026'),
+                'role'               => 'admin',
+                'email_verified_at'  => now(),
             ]
         );
     }

@@ -13,8 +13,11 @@
         color: #c9a84c !important; text-decoration: none !important;
         font-size: 0.83rem; font-weight: 600; transition: all 0.2s; z-index: 999;
     }
-    .back-home-btn:hover { background: rgba(201,168,76,0.2) !important; color: #f0d080 !important; }
-
+    .back-home-btn:hover {
+        background: rgba(201,168,76,0.2) !important;
+        color: #f0d080 !important;
+        border-color: rgba(201,168,76,0.55);
+    }
     .login-card { padding: 36px 32px !important; }
     .login-header { text-align: center; margin-bottom: 24px; }
     .login-logo {
@@ -29,13 +32,27 @@
     .login-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
     .login-subtitle { font-size: 0.83rem; opacity: 0.6; }
     .form-group { margin-bottom: 16px; }
-    .form-label { display: block; font-size: 0.83rem; font-weight: 600; margin-bottom: 6px; opacity: 0.8; }
+    .form-label {
+        display: block; font-size: 0.83rem; font-weight: 600;
+        margin-bottom: 6px; opacity: 0.8;
+    }
     .form-input { width: 100%; padding: 11px 14px; border-radius: 9px; font-size: 0.93rem; }
     .btn.btn-primary {
         width: 100%; padding: 12px; border-radius: 10px;
         font-size: 0.97rem; font-weight: 700; margin-bottom: 16px;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
     }
     .login-footer { text-align: center; font-size: 0.83rem; margin-top: 4px; opacity: 0.7; }
+
+    .info-box {
+        background: rgba(201,168,76,0.08);
+        border: 1px solid rgba(201,168,76,0.25);
+        border-radius: 10px; padding: 12px 16px;
+        margin-bottom: 20px; font-size: 0.83rem;
+        color: #92700a; line-height: 1.5;
+        display: flex; align-items: flex-start; gap: 10px;
+    }
+    .info-box svg { flex-shrink: 0; margin-top: 1px; color: #c9a84c; }
 </style>
 
 <a href="{{ route('home') }}" class="back-home-btn">
@@ -59,30 +76,52 @@
                     <span>{{ config('app.name') }}</span>
                 </div>
                 <h1 class="login-title">Mot de passe oublié</h1>
-                <p class="login-subtitle">Nous vous enverrons un lien de réinitialisation</p>
+                <p class="login-subtitle">Réinitialisez votre mot de passe</p>
             </div>
 
             @if (session('status'))
-                <div class="alert alert-success" style="padding:10px 14px; margin-bottom:16px; border-radius:8px; font-size:0.85rem;">
+                <div style="background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.3);
+                            border-radius:10px; padding:12px 16px; margin-bottom:18px;
+                            color:#166534; font-size:0.85rem; display:flex; align-items:center; gap:8px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
                     {{ session('status') }}
                 </div>
             @endif
 
             @if ($errors->any())
-                <div class="alert alert-danger" style="padding:10px 14px; margin-bottom:16px; border-radius:8px; font-size:0.85rem;">
+                <div style="background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.3);
+                            border-radius:10px; padding:12px 16px; margin-bottom:18px;
+                            color:#dc2626; font-size:0.85rem;">
                     {{ $errors->first() }}
                 </div>
             @endif
+
+            <div class="info-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+            </div>
 
             <form method="POST" action="{{ route('password.email') }}" class="login-form">
                 @csrf
                 <div class="form-group">
                     <label class="form-label">Adresse email</label>
                     <input type="email" name="email" class="form-input"
-                           value="{{ old('email') }}" required autofocus>
+                           value="{{ old('email') }}"
+                           placeholder="votre@email.com"
+                           required autofocus>
                 </div>
                 <button type="submit" class="btn btn-primary">
-                    Envoyer le lien
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M22 2L11 13"/>
+                        <path d="M22 2L15 22 11 13 2 9l20-7z"/>
+                    </svg>
+                    Envoyer le lien de réinitialisation
                 </button>
             </form>
 

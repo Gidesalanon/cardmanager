@@ -251,7 +251,7 @@
                     <div class="label">Écoles partenaires</div>
                 </div>
                 <div class="visual-stat">
-                    <div class="num">10k+</div>
+                    <div class="num">10M+</div>
                     <div class="label">Cartes produites</div>
                 </div>
                 <div class="visual-stat">

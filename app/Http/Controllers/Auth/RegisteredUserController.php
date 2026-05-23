@@ -53,7 +53,7 @@ class RegisteredUserController extends Controller
             ]);
         }
 
-        session()->flash('success', 'Compte créé avec succès ! Bienvenue sur CardManager.');
+        session()->flash('success', 'Compte créé avec succès ! Bienvenue sur Donami-Christ.');
         return redirect()->route('dashboard');
     }
 }
