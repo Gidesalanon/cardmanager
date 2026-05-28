@@ -13,7 +13,6 @@
 .circle-edit   { background: #c9a84c; }
 .circle-delete { background: #dc2626; }
 .circle-pdf    { background: #2563eb; }
-.circle-img    { background: #059669; }
 
 .filter-bar {
     padding: 18px 20px;
@@ -57,7 +56,6 @@
     letter-spacing: 0.5px;
 }
 
-/* Header actions — tout sur une seule ligne */
 .header-actions {
     display: flex;
     align-items: center;
@@ -65,9 +63,22 @@
     flex-wrap: wrap;
 }
 
+/* Select école dans le header — largeur auto selon contenu */
+.select-ecole-massive {
+    height: 38px;
+    min-width: 160px;
+    max-width: 260px;
+    width: auto;
+    font-size: 0.78rem !important; /* police réduite pour que le nom tienne */
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
 @media (max-width: 900px) {
     .filter-bar { grid-template-columns: 1fr 1fr; }
     .header-actions { flex-wrap: wrap; }
+    .select-ecole-massive { min-width: 140px; max-width: 100%; }
 }
 @media (max-width: 600px) {
     .filter-bar { grid-template-columns: 1fr; }
@@ -81,7 +92,6 @@
             <p class="card-subtitle">Gestion des élèves — Année {{ $activeYear->label ?? '' }}</p>
         </div>
 
-        {{-- Toute la ligne d'actions : Nouvel élève + select école + bouton générer --}}
         <div class="header-actions">
 
             <a href="{{ route('admin.students.create') }}" class="btn btn-primary">
@@ -92,8 +102,8 @@
                   style="display:flex; align-items:center; gap:8px;"
                   onsubmit="return validerGenerationMassive(this)">
                 <select name="ecole_id" id="select-ecole-massive"
-                        class="form-input" style="min-width:180px; height:38px;">
-                    <option value="">-- Choisir une école --</option>
+                        class="form-input select-ecole-massive">
+                    <option value="">-- École --</option>
                     @foreach($ecoles as $ecole)
                         <option value="{{ $ecole->id }}">{{ $ecole->nom_ecole }}</option>
                     @endforeach
@@ -239,11 +249,6 @@
                             <a href="{{ route('admin.students.export.card.pdf', $eleve) }}"
                                class="circle-btn circle-pdf" title="Exporter PDF">
                                 <i class="fa-solid fa-download"></i>
-                            </a>
-                            <a href="{{ route('admin.students.export.card.image', $eleve) }}"
-                               class="circle-btn circle-img" title="Exporter Image"
-                               onclick="event.preventDefault(); alert('Fonctionnalité bientôt disponible.');">
-                                <i class="fa-solid fa-file-image"></i>
                             </a>
                         </div>
                     </td>

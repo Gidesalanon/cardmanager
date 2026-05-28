@@ -71,15 +71,16 @@ $fontNomDirecteur = dynamicFont(
 $telDirecteur = $eleve->ecole->directeur->telephone ?? '';
 $sexeDir      = $eleve->ecole->directeur->sexe ?? 'M';
 
-// Taille numéro de table — plus court = plus grand
+// Numéro de table — 9pt fixe, letter-spacing adaptatif pour tenir dans la case
 $numTable = $eleve->numero_table ?? '';
 $lenNum   = mb_strlen($numTable);
-if ($lenNum === 0)      $fontNumTable = '11pt';
-elseif ($lenNum <= 3)   $fontNumTable = '11pt';
-elseif ($lenNum <= 5)   $fontNumTable = '10pt';
-elseif ($lenNum <= 7)   $fontNumTable = '9pt';
-elseif ($lenNum <= 10)  $fontNumTable = '7.5pt';
-else                    $fontNumTable = '6pt';
+if      ($lenNum === 0)  { $fontNumTable = '9pt'; $lsNum = '0px'; }
+elseif  ($lenNum <= 4)   { $fontNumTable = '9pt'; $lsNum = '0.5px'; }
+elseif  ($lenNum <= 6)   { $fontNumTable = '9pt'; $lsNum = '0.2px'; }
+elseif  ($lenNum <= 8)   { $fontNumTable = '9pt'; $lsNum = '0px'; }
+elseif  ($lenNum <= 10)  { $fontNumTable = '9pt'; $lsNum = '-0.3px'; }
+elseif  ($lenNum <= 12)  { $fontNumTable = '9pt'; $lsNum = '-0.5px'; }
+else                     { $fontNumTable = '9pt'; $lsNum = '-0.8px'; }
 @endphp
 
 {{-- ==================== RECTO ==================== --}}
@@ -101,23 +102,28 @@ else                    $fontNumTable = '6pt';
 
     {{--
         Case Numéro de table :
-        - La donnée (numéro) est centrée dans le champ
-        - L'intitulé "Numéro de table" est aligné à DROITE sous le champ
-          (comme illustré sur la photo)
+        - Hauteur fixe 4mm, overflow hidden → la case ne grandit jamais
+        - Numéro centré horizontalement et verticalement
+        - Police condensée simulée : letter-spacing négatif + font-weight 700
+        - Intitulé "Numéro de table" aligné à droite (comme l'illustration)
     --}}
     <div style="position:absolute; top:7mm; right:2mm; width:24mm;">
-        {{-- Champ : hauteur fixe 4mm, numéro centré --}}
         <div style="border:0.4mm solid #000; width:24mm; height:4mm;
+                    padding:0; margin:0;
                     display:flex; align-items:center; justify-content:center;
-                    overflow:hidden;">
+                    overflow:hidden; box-sizing:border-box;">
             @if($numTable)
-                <span style="font-size:{{ $fontNumTable }}; font-weight:900;
-                             line-height:1; letter-spacing:0.3px;">
+                <span style="font-family: Arial, sans-serif;
+                             font-size:{{ $fontNumTable }};
+                             font-weight:700;
+                             letter-spacing:{{ $lsNum }};
+                             line-height:1;
+                             white-space:nowrap;
+                             display:block;">
                     {{ $numTable }}
                 </span>
             @endif
         </div>
-        {{-- Intitulé aligné à droite --}}
         <div style="font-size:4.5pt; font-weight:600; margin-top:0.4mm;
                     text-align:right; width:24mm;">
             Numéro de table

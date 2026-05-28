@@ -68,14 +68,16 @@ $premierDirecteur = $premiereEcole->directeur;
         $classeAffichee .= ' ' . $eleve->classe->serie->nom;
     }
 
-    $numTable = $eleve->numero_table ?? '';
-    $lenNum   = mb_strlen($numTable);
-    if ($lenNum === 0)      $fontNumTable = '11pt';
-    elseif ($lenNum <= 3)   $fontNumTable = '11pt';
-    elseif ($lenNum <= 5)   $fontNumTable = '10pt';
-    elseif ($lenNum <= 7)   $fontNumTable = '9pt';
-    elseif ($lenNum <= 10)  $fontNumTable = '7.5pt';
-    else                    $fontNumTable = '6pt';
+// Numéro de table — 9pt fixe, letter-spacing adaptatif pour tenir dans la case
+$numTable = $eleve->numero_table ?? '';
+$lenNum   = mb_strlen($numTable);
+if      ($lenNum === 0)  { $fontNumTable = '9pt'; $lsNum = '0px'; }
+elseif  ($lenNum <= 4)   { $fontNumTable = '9pt'; $lsNum = '0.5px'; }
+elseif  ($lenNum <= 6)   { $fontNumTable = '9pt'; $lsNum = '0.2px'; }
+elseif  ($lenNum <= 8)   { $fontNumTable = '9pt'; $lsNum = '0px'; }
+elseif  ($lenNum <= 10)  { $fontNumTable = '9pt'; $lsNum = '-0.3px'; }
+elseif  ($lenNum <= 12)  { $fontNumTable = '9pt'; $lsNum = '-0.5px'; }
+else                     { $fontNumTable = '9pt'; $lsNum = '-0.8px'; }
 @endphp
 
 {{-- ==================== RECTO ==================== --}}
@@ -98,11 +100,17 @@ $premierDirecteur = $premiereEcole->directeur;
     {{-- Case Numéro de table --}}
     <div style="position:absolute; top:7mm; right:2mm; width:24mm;">
         <div style="border:0.4mm solid #000; width:24mm; height:4mm;
+                    padding:0; margin:0;
                     display:flex; align-items:center; justify-content:center;
-                    overflow:hidden;">
+                    overflow:hidden; box-sizing:border-box;">
             @if($numTable)
-                <span style="font-size:{{ $fontNumTable }}; font-weight:900;
-                             line-height:1; letter-spacing:0.3px;">
+                <span style="font-family: Arial, sans-serif;
+                             font-size:{{ $fontNumTable }};
+                             font-weight:700;
+                             letter-spacing:{{ $lsNum }};
+                             line-height:1;
+                             white-space:nowrap;
+                             display:block;">
                     {{ $numTable }}
                 </span>
             @endif
