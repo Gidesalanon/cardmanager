@@ -32,6 +32,14 @@ class AdminStudentImportController extends Controller
         ]);
     }
 
+    // Nettoie _x000d_ et \r injectés par PhpSpreadsheet depuis Excel Windows
+    private function cleanVal(string $value): string
+    {
+        $value = preg_replace('/_x000[Dd]_/u', ' ', $value);
+        $value = preg_replace('/\r\n|\r|\n/', ' ', $value);
+        return trim(preg_replace('/\s{2,}/', ' ', $value));
+    }
+
     public function preview(Request $request)
     {
         $request->validate([
@@ -58,27 +66,26 @@ class AdminStudentImportController extends Controller
             $telEcole = '00000000';
             if ($request->filled('ecole_id')) {
                 $ecolePreview = Ecole::find($request->ecole_id);
-                $telEcole = $ecolePreview->telephone ?? '00000000';
+                $telEcole     = $ecolePreview->telephone ?? '00000000';
             }
 
             $mappingRules = [
-                'nom_prenom'  => ['nom et prenoms', 'nom & prenoms', 'nom prenoms', 'nom et prenom'],
-                'matricule'   => ['n° table', 'numero de table', 'matricule', 'identifiant'],
-                'sexe'        => ['sexe', 'genre', 'm/f', 'gender'],
-                'date_lieu'   => ['date/lieu', 'date et lieu', 'date & lieu', 'date/lieu naissance'],
-                'prenom'      => ['prenom', 'prenoms', 'prénom', 'prenom(s)'],
-                'nom'         => ['nom', 'candidat'],
-                'date_naiss'  => ['date de naissance', 'date naissance', 'né le', 'date naiss', 'date'],
-                'lieu_naiss'  => ['lieu de naissance', 'lieu naissance', 'lieu naiss', 'lieu'],
-                'telephone'   => ['telephone', 'parent', 'contact', 'tuteur', 'téléphone', 'tel', 'tél'],
-                'nationalite' => ['nationalité', 'nation', 'pays'],
+                'nom_prenom'   => ['nom et prenoms', 'nom & prenoms', 'nom prenoms', 'nom et prenom'],
+                'matricule'    => ['matricule', 'identifiant', 'n° edumaster', 'edumaster'],
+                'numero_table' => ['n° table', 'numero de table', 'num table', 'n°table', 'n° de table', 'numero table'],
+                'sexe'         => ['sexe', 'genre', 'm/f', 'gender'],
+                'date_lieu'    => ['date/lieu', 'date et lieu', 'date & lieu', 'date/lieu naissance'],
+                'prenom'       => ['prenom', 'prenoms', 'prénom', 'prenom(s)'],
+                'nom'          => ['nom', 'candidat'],
+                'date_naiss'   => ['date de naissance', 'date naissance', 'né le', 'date naiss', 'date'],
+                'lieu_naiss'   => ['lieu de naissance', 'lieu naissance', 'lieu naiss', 'lieu'],
+                'telephone'    => ['telephone', 'parent', 'contact', 'tuteur', 'téléphone', 'tel', 'tél'],
+                'nationalite'  => ['nationalité', 'nation', 'pays'],
             ];
 
             $indices     = [];
             $headerRow   = null;
             $usedColumns = [];
-
-            Log::info('=== ADMIN IMPORT DEBUG START ===');
 
             for ($row = 1; $row <= 15; $row++) {
                 $rowIndices  = [];
@@ -129,36 +136,29 @@ class AdminStudentImportController extends Controller
             $students = [];
             for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
 
-                // ─── CORRECTIF : lecture sécurisée via getFormattedValue() ───
-                // getValue() peut retourner un float pour les cellules texte
-                // contenant de grands nombres (ex: matricules à 12-13 chiffres),
-                // ce qui provoque des faux doublons à l'enregistrement.
-                // getFormattedValue() respecte le format défini dans Excel (texte, nombre, date…).
+                // getFormattedValue() pour éviter les floats sur grands nombres
                 $getVal = function ($field) use ($worksheet, $indices, $row) {
                     if (!isset($indices[$field])) return '';
                     $cell = $worksheet->getCell($indices[$field] . $row);
                     return trim((string) $cell->getFormattedValue());
                 };
 
-                // Lecture brute (getValue) uniquement pour les champs numériques
-                // où on veut vérifier si la cellule est un serial de date Excel.
                 $getRaw = function ($field) use ($worksheet, $indices, $row) {
                     if (!isset($indices[$field])) return '';
                     return $worksheet->getCell($indices[$field] . $row)->getValue();
                 };
-                // ─────────────────────────────────────────────────────────────
 
                 $nom    = '';
                 $prenom = '';
 
                 if (isset($indices['nom_prenom'])) {
-                    $full   = $getVal('nom_prenom');
+                    $full   = $this->cleanVal($getVal('nom_prenom'));
                     $parts  = explode(' ', $full, 2);
                     $nom    = $parts[0] ?? '';
                     $prenom = $parts[1] ?? '';
                 } else {
-                    $nom    = $getVal('nom');
-                    $prenom = $getVal('prenom');
+                    $nom    = $this->cleanVal($getVal('nom'));
+                    $prenom = $this->cleanVal($getVal('prenom'));
                 }
 
                 if (empty($nom) || is_numeric($nom)) continue;
@@ -169,11 +169,11 @@ class AdminStudentImportController extends Controller
                     $raw = $getVal('date_lieu');
                     if (preg_match('/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/', $raw, $m)) {
                         $dateNaiss = $this->formatExcelDate($getRaw('date_lieu'), $m[1]);
-                        $lieuNaiss = trim(str_replace($m[1], '', $raw));
+                        $lieuNaiss = $this->cleanVal(trim(str_replace($m[1], '', $raw)));
                     }
                 } else {
                     $dateNaiss = $this->formatExcelDate($getRaw('date_naiss'), $getVal('date_naiss'));
-                    $lieuNaiss = $getVal('lieu_naiss');
+                    $lieuNaiss = $this->cleanVal($getVal('lieu_naiss'));
                 }
 
                 $rawSexe = $getVal('sexe');
@@ -185,20 +185,25 @@ class AdminStudentImportController extends Controller
                     $sexe = 'F';
                 }
 
-                // ─── CORRECTIF matricule ───────────────────────────────────
-                // getFormattedValue() garantit qu'un matricule stocké comme
-                // texte dans Excel (même s'il ressemble à un grand nombre)
-                // est lu fidèlement, sans perte de précision flottante.
+                // Matricule — getFormattedValue pour éviter float
                 $matricule = null;
                 if (isset($indices['matricule'])) {
                     $rawMatricule = trim((string) $worksheet->getCell($indices['matricule'] . $row)->getFormattedValue());
-                    // Supprimer les espaces internes éventuels
                     $rawMatricule = preg_replace('/\s+/', '', $rawMatricule);
                     if (!empty($rawMatricule) && strlen($rawMatricule) >= 3) {
                         $matricule = $rawMatricule;
                     }
                 }
-                // ──────────────────────────────────────────────────────────
+
+                // Numéro de table — null si absent
+                $numeroTable = null;
+                if (isset($indices['numero_table'])) {
+                    $rawNumTable = trim((string) $worksheet->getCell($indices['numero_table'] . $row)->getFormattedValue());
+                    $rawNumTable = preg_replace('/\s+/', '', $rawNumTable);
+                    if (!empty($rawNumTable)) {
+                        $numeroTable = $rawNumTable;
+                    }
+                }
 
                 $telRaw    = $getVal('telephone');
                 $telephone = (!empty($telRaw) && $telRaw !== '00000000')
@@ -208,18 +213,16 @@ class AdminStudentImportController extends Controller
                 $students[] = [
                     'photo'            => $images[$row] ?? null,
                     'matricule'        => $matricule,
+                    'numero_table'     => $numeroTable,
                     'nom'              => strtoupper($nom),
                     'prenom'           => ucwords(strtolower($prenom)),
                     'sexe'             => $sexe,
-                    'nationalite'      => $getVal('nationalite') ?: 'BENIN',
+                    'nationalite'      => $this->cleanVal($getVal('nationalite')) ?: 'BENIN',
                     'date_naissance'   => $dateNaiss,
                     'lieu_naissance'   => $lieuNaiss ?: '',
                     'telephone_tuteur' => $telephone,
                 ];
             }
-
-            Log::info('Total students: ' . count($students));
-            Log::info('=== ADMIN IMPORT DEBUG END ===');
 
             if (empty($students)) {
                 return response()->json([
@@ -250,44 +253,29 @@ class AdminStudentImportController extends Controller
 
         $ecole = Ecole::findOrFail($request->ecole_id);
 
-        $successCount   = 0;
-        $duplicateCount = 0;
-        $errorCount     = 0;
-        $duplicates     = [];
+        $successCount = 0;
+        $errorCount   = 0;
 
-        // ─── CORRECTIF : pré-vérification des doublons AVANT la transaction ─
-        //
-        // Ancienne logique : le throw à l'intérieur de DB::transaction()
-        // déclenchait un rollback immédiat et remontait une exception
-        // "doublon" même si le matricule n'existait pas réellement en base,
-        // parce que getValue() avait retourné un float mal formaté.
-        //
-        // Nouvelle logique :
-        //  1. On normalise tous les matricules en string propre.
-        //  2. On vérifie les doublons internes au fichier (deux lignes identiques).
-        //  3. On vérifie les doublons contre la base en une seule requête whereIn.
-        //  4. Si tout est OK, on fait la transaction sans aucun throw pour doublon.
-        // ──────────────────────────────────────────────────────────────────────
-
-        // 1. Normalisation : forcer chaque matricule en string propre
+        // Normalisation matricules
         $studentsNormalized = collect($request->students)->map(function ($s) {
             $s['matricule'] = !empty($s['matricule'])
                 ? preg_replace('/\s+/', '', trim((string) $s['matricule']))
                 : null;
+            // Nettoyage _x000d_ sur tous les champs texte
+            foreach (['nom', 'prenom', 'lieu_naissance'] as $field) {
+                if (!empty($s[$field])) {
+                    $s[$field] = preg_replace('/_x000[Dd]_/u', ' ', $s[$field]);
+                    $s[$field] = trim(preg_replace('/\s{2,}/', ' ', $s[$field]));
+                }
+            }
             return $s;
         })->toArray();
 
-        // 2. Doublons internes au fichier
+        // Vérification doublons internes
         $matriculesDansFichier = collect($studentsNormalized)
-            ->pluck('matricule')
-            ->filter() // retire null et ''
-            ->values();
+            ->pluck('matricule')->filter()->values();
 
-        $doublonsInternes = $matriculesDansFichier
-            ->duplicates()
-            ->values()
-            ->toArray();
-
+        $doublonsInternes = $matriculesDansFichier->duplicates()->values()->toArray();
         if (!empty($doublonsInternes)) {
             return response()->json([
                 'success' => false,
@@ -296,12 +284,10 @@ class AdminStudentImportController extends Controller
             ], 422);
         }
 
-        // 3. Doublons contre la base de données (une seule requête)
+        // Vérification doublons base
         if ($matriculesDansFichier->isNotEmpty()) {
             $existantsEnBase = Eleve::whereIn('matricule_edumaster', $matriculesDansFichier->toArray())
-                ->pluck('matricule_edumaster')
-                ->toArray();
-
+                ->pluck('matricule_edumaster')->toArray();
             if (!empty($existantsEnBase)) {
                 return response()->json([
                     'success' => false,
@@ -311,7 +297,6 @@ class AdminStudentImportController extends Controller
             }
         }
 
-        // 4. Transaction propre — plus aucun throw pour doublon ici
         try {
             DB::transaction(function () use ($studentsNormalized, $request, $ecole, &$successCount, &$errorCount) {
                 foreach ($studentsNormalized as $index => $s) {
@@ -320,7 +305,6 @@ class AdminStudentImportController extends Controller
                         throw new \Exception('Données critiques manquantes ligne ' . ($index + 1));
                     }
 
-                    // Photo
                     $photoPath = null;
                     if (!empty($s['photo']) && preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
                         $data      = base64_decode(substr($s['photo'], strpos($s['photo'], ',') + 1));
@@ -328,7 +312,6 @@ class AdminStudentImportController extends Controller
                         Storage::disk('public')->put($photoPath, $data);
                     }
 
-                    // QR Code
                     $qrContent  = 'Nom: ' . $s['nom'] . "\nPrenom: " . $s['prenom'] . "\nEducMaster: " . ($s['matricule'] ?? '');
                     $qrCodePath = 'eleves/qrcodes/' . Str::slug(($s['matricule'] ?: $s['nom'] . '_' . $index)) . '.png';
                     $qrFullPath = storage_path('app/public/' . $qrCodePath);
@@ -340,7 +323,6 @@ class AdminStudentImportController extends Controller
                     $writer = new PngWriter();
                     $writer->write(new QrCode($qrContent))->saveToFile($qrFullPath);
 
-                    // Résolution classe + série
                     $classe   = Classe::find($request->classe_id);
                     $classeId = $classe->id;
 
@@ -348,8 +330,7 @@ class AdminStudentImportController extends Controller
                         $serie = Serie::where('nom', $request->serie)->first();
                         if ($serie) {
                             $resolved = Classe::where('serie_id', $serie->id)
-                                ->where('nom', $classe->nom)
-                                ->first();
+                                ->where('nom', $classe->nom)->first();
                             if ($resolved) $classeId = $resolved->id;
                         }
                     }
@@ -370,6 +351,7 @@ class AdminStudentImportController extends Controller
                         'telephone_tuteur'    => $telephone,
                         'photo'               => $photoPath,
                         'matricule_edumaster' => $s['matricule'] ?? null,
+                        'numero_table'        => $s['numero_table'] ?? null,
                         'qr_code'             => $qrCodePath,
                     ]);
 
@@ -380,12 +362,11 @@ class AdminStudentImportController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "$successCount élève(s) importé(s) avec succès.",
-                'stats'   => compact('successCount', 'duplicateCount', 'errorCount')
+                'stats'   => compact('successCount', 'errorCount')
             ]);
 
         } catch (\Exception $e) {
             Log::error('Erreur StoreAll Import Admin: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'enregistrement des élèves.',
@@ -434,37 +415,23 @@ class AdminStudentImportController extends Controller
         return $images;
     }
 
-    // ─── CORRECTIF formatExcelDate ─────────────────────────────────────────
-    // Signature étendue : accepte la valeur brute (getValue) ET la valeur
-    // formatée (getFormattedValue) pour distinguer serial Excel vs string date.
-    // L'ancienne signature ne prenait qu'un seul argument.
     private function formatExcelDate($rawValue, $formattedValue = null)
     {
-        // Priorité 1 : serial numérique Excel (ex: 41733 → date)
         if (is_numeric($rawValue) && $rawValue > 0) {
             try {
                 return Carbon::instance(Date::excelToDateTimeObject($rawValue))->format('Y-m-d');
-            } catch (\Exception $e) {
-                // pas un serial valide, on continue
-            }
+            } catch (\Exception $e) {}
         }
 
-        // Priorité 2 : valeur formatée fournie (string "JJ/MM/AAAA" ou similaire)
         $value = $formattedValue ?? (string) $rawValue;
-
         if (empty($value)) return null;
 
         try {
-            if (preg_match('/(\d{2})\/(\d{2})\/(\d{4})/', $value, $m)) {
-                return "{$m[3]}-{$m[2]}-{$m[1]}";
-            }
-            if (preg_match('/(\d{2})-(\d{2})-(\d{4})/', $value, $m)) {
-                return "{$m[3]}-{$m[2]}-{$m[1]}";
-            }
+            if (preg_match('/(\d{2})\/(\d{2})\/(\d{4})/', $value, $m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
+            if (preg_match('/(\d{2})-(\d{2})-(\d{4})/', $value, $m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
             return Carbon::parse($value)->format('Y-m-d');
         } catch (\Exception $e) {
             return null;
         }
     }
-    // ────────────────────────────────────────────────────────────────────────
 }

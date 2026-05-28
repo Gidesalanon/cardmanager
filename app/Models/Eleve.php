@@ -17,6 +17,7 @@ class Eleve extends Model
         'photo',
         'qr_code',
         'matricule_edumaster',
+        'numero_table',
         'classe_id',
         'ecole_id',
     ];

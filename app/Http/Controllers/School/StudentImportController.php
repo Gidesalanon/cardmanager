@@ -13,12 +13,12 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
-use Illuminate\Support\Facades\Log;
 use App\Models\Serie;
 
 class StudentImportController extends Controller
@@ -29,6 +29,13 @@ class StudentImportController extends Controller
             'activeYear' => SchoolYear::active()->firstOrFail(),
             'classes'    => Classe::select('id', 'nom')->orderBy('nom')->get()->unique('nom')->values(),
         ]);
+    }
+
+    private function cleanVal(string $value): string
+    {
+        $value = preg_replace('/_x000[Dd]_/u', ' ', $value);
+        $value = preg_replace('/\r\n|\r|\n/', ' ', $value);
+        return trim(preg_replace('/\s{2,}/', ' ', $value));
     }
 
     public function preview(Request $request)
@@ -63,31 +70,27 @@ class StudentImportController extends Controller
             $images = $this->extractImagesFromExcel($worksheet);
 
             $mappingRules = [
-                'nom_prenom'  => ['nom et prenoms', 'nom & prenoms', 'nom prenoms', 'nom et prenom'],
-                'matricule'   => ['n° table', 'numero de table', 'matricule', 'identifiant'],
-                'sexe'        => ['sexe', 'genre', 'm/f', 'gender'],
-                'date_lieu'   => ['date/lieu', 'date et lieu', 'date & lieu', 'date/lieu naissance'],
-                'prenom'      => ['prenom', 'prenoms', 'prénom', 'prenom(s)'],
-                'nom'         => ['nom', 'candidat'],
-                'date_naiss'  => ['date de naissance', 'date naissance', 'né le', 'date naiss', 'date'],
-                'lieu_naiss'  => ['lieu de naissance', 'lieu naissance', 'lieu naiss', 'lieu'],
-                'telephone'   => ['telephone', 'parent', 'contact', 'tuteur', 'téléphone', 'tel', 'tél'],
-                'nationalite' => ['nationalité', 'nation', 'pays'],
+                'nom_prenom'   => ['nom et prenoms', 'nom & prenoms', 'nom prenoms', 'nom et prenom'],
+                'matricule'    => ['matricule', 'identifiant', 'n° edumaster', 'edumaster'],
+                'numero_table' => ['n° table', 'numero de table', 'num table', 'n°table', 'n° de table', 'numero table'],
+                'sexe'         => ['sexe', 'genre', 'm/f', 'gender'],
+                'date_lieu'    => ['date/lieu', 'date et lieu', 'date & lieu', 'date/lieu naissance'],
+                'prenom'       => ['prenom', 'prenoms', 'prénom', 'prenom(s)'],
+                'nom'          => ['nom', 'candidat'],
+                'date_naiss'   => ['date de naissance', 'date naissance', 'né le', 'date naiss', 'date'],
+                'lieu_naiss'   => ['lieu de naissance', 'lieu naissance', 'lieu naiss', 'lieu'],
+                'telephone'    => ['telephone', 'parent', 'contact', 'tuteur', 'téléphone', 'tel', 'tél'],
+                'nationalite'  => ['nationalité', 'nation', 'pays'],
             ];
 
             $indices     = [];
             $headerRow   = null;
             $usedColumns = [];
 
-            Log::info('=== IMPORT DEBUG START ===');
-            Log::info('Highest Row: ' . $highestRow . ' | Highest Col: ' . $highestColumnLetter);
-
             for ($row = 1; $row <= 15; $row++) {
                 $rowIndices  = [];
                 $matchCount  = 0;
                 $usedColumns = [];
-
-                Log::info("--- Scan row $row pour header ---");
 
                 for ($col = 1; $col <= $highestColumnIndex; $col++) {
                     $colLetter = Coordinate::stringFromColumnIndex($col);
@@ -95,8 +98,6 @@ class StudentImportController extends Controller
                     $val       = strtolower(Str::ascii(trim((string)$cellValue)));
 
                     if (empty($val) || $val === 'n°' || $val === 'no') continue;
-
-                    Log::info("  Col $colLetter: raw='$cellValue' | normalized='$val'");
 
                     foreach ($mappingRules as $field => $synonyms) {
                         foreach ($synonyms as $synonym) {
@@ -111,15 +112,12 @@ class StudentImportController extends Controller
                                     $rowIndices[$field] = $colLetter;
                                     $usedColumns[]      = $colLetter;
                                     $matchCount++;
-                                    Log::info("  => MATCH: field='$field' col='$colLetter' synonym='$synonym'");
                                 }
                                 break;
                             }
                         }
                     }
                 }
-
-                Log::info("Row $row: matchCount=$matchCount | indices=" . json_encode($rowIndices));
 
                 if ($matchCount >= 3) {
                     $indices   = $rowIndices;
@@ -128,35 +126,38 @@ class StudentImportController extends Controller
                 }
             }
 
-            Log::info('Header row final: ' . ($headerRow ?? 'NON DÉTECTÉ'));
-            Log::info('Indices finaux: ' . json_encode($indices));
-
             if (!$headerRow) {
                 return response()->json([
                     'error'   => 'Colonnes non détectées.',
-                    'details' => 'Assurez-vous que votre fichier contient des en-têtes clairs (Nom, Prénom, Sexe, Date naissance, Lieu naissance, Téléphone parent).'
+                    'details' => 'Assurez-vous que votre fichier contient des en-têtes clairs.'
                 ], 422);
             }
 
             $students = [];
             for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
+
                 $getVal = function ($field) use ($worksheet, $indices, $row) {
-                    return isset($indices[$field])
-                        ? trim((string)$worksheet->getCell($indices[$field] . $row)->getValue())
-                        : '';
+                    if (!isset($indices[$field])) return '';
+                    $cell = $worksheet->getCell($indices[$field] . $row);
+                    return trim((string) $cell->getFormattedValue());
+                };
+
+                $getRaw = function ($field) use ($worksheet, $indices, $row) {
+                    if (!isset($indices[$field])) return '';
+                    return $worksheet->getCell($indices[$field] . $row)->getValue();
                 };
 
                 $nom    = '';
                 $prenom = '';
 
                 if (isset($indices['nom_prenom'])) {
-                    $full   = $getVal('nom_prenom');
+                    $full   = $this->cleanVal($getVal('nom_prenom'));
                     $parts  = explode(' ', $full, 2);
                     $nom    = $parts[0] ?? '';
                     $prenom = $parts[1] ?? '';
                 } else {
-                    $nom    = $getVal('nom');
-                    $prenom = $getVal('prenom');
+                    $nom    = $this->cleanVal($getVal('nom'));
+                    $prenom = $this->cleanVal($getVal('prenom'));
                 }
 
                 if (empty($nom) || is_numeric($nom)) continue;
@@ -166,57 +167,61 @@ class StudentImportController extends Controller
                 if (isset($indices['date_lieu'])) {
                     $raw = $getVal('date_lieu');
                     if (preg_match('/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/', $raw, $m)) {
-                        $dateNaiss = $this->formatExcelDate($m[1]);
-                        $lieuNaiss = trim(str_replace($m[1], '', $raw));
+                        $dateNaiss = $this->formatExcelDate($getRaw('date_lieu'), $m[1]);
+                        $lieuNaiss = $this->cleanVal(trim(str_replace($m[1], '', $raw)));
                     }
                 } else {
-                    $dateNaiss = $this->formatExcelDate($getVal('date_naiss'));
-                    $lieuNaiss = $getVal('lieu_naiss');
+                    $dateNaiss = $this->formatExcelDate($getRaw('date_naiss'), $getVal('date_naiss'));
+                    $lieuNaiss = $this->cleanVal($getVal('lieu_naiss'));
                 }
 
                 $rawSexe = $getVal('sexe');
                 $s       = strtoupper(trim(Str::ascii($rawSexe)));
                 $sexe    = 'M';
-
                 if (in_array($s, ['F', 'FEMININ', 'FILLE', 'FEMME'])) {
                     $sexe = 'F';
-                } elseif (in_array($s, ['M', 'MASCULIN', 'GARCON', 'HOMME'])) {
-                    $sexe = 'M';
-                } else {
-                    if (strlen($s) > 0) {
-                        $firstChar = substr($s, 0, 1);
-                        if ($firstChar === 'F') $sexe = 'F';
-                        else $sexe = 'M';
+                } elseif (strlen($s) > 0 && substr($s, 0, 1) === 'F') {
+                    $sexe = 'F';
+                }
+
+                // Matricule
+                $matricule = null;
+                if (isset($indices['matricule'])) {
+                    $rawMatricule = trim((string) $worksheet->getCell($indices['matricule'] . $row)->getFormattedValue());
+                    $rawMatricule = preg_replace('/\s+/', '', $rawMatricule);
+                    if (!empty($rawMatricule) && strlen($rawMatricule) >= 3) {
+                        $matricule = $rawMatricule;
                     }
                 }
 
-                // Matricule — laissé null si absent, modifiable après
-                $matricule = $getVal('matricule');
-                if (empty($matricule) || strlen($matricule) < 3) {
-                    $matricule = null;
+                // Numéro de table — null si absent
+                $numeroTable = null;
+                if (isset($indices['numero_table'])) {
+                    $rawNumTable = trim((string) $worksheet->getCell($indices['numero_table'] . $row)->getFormattedValue());
+                    $rawNumTable = preg_replace('/\s+/', '', $rawNumTable);
+                    if (!empty($rawNumTable)) {
+                        $numeroTable = $rawNumTable;
+                    }
                 }
 
                 $students[] = [
                     'photo'            => $images[$row] ?? null,
                     'matricule'        => $matricule,
+                    'numero_table'     => $numeroTable,
                     'nom'              => strtoupper($nom),
                     'prenom'           => ucwords(strtolower($prenom)),
                     'sexe'             => $sexe,
-                    'nationalite'      => $getVal('nationalite') ?: 'BENIN',
+                    'nationalite'      => $this->cleanVal($getVal('nationalite')) ?: 'BENIN',
                     'date_naissance'   => $dateNaiss,
                     'lieu_naissance'   => $lieuNaiss ?: '',
                     'telephone_tuteur' => $getVal('telephone') ?: (auth()->user()->ecole->telephone ?? '00000000'),
                 ];
             }
 
-            Log::info('Total students: ' . count($students));
-            Log::info('Premier étudiant: ' . json_encode($students[0] ?? null));
-            Log::info('IMPORT DEBUG END');
-
             if (empty($students)) {
                 return response()->json([
                     'error'   => 'Aucune donnée d\'élève trouvée.',
-                    'details' => 'Le fichier contient des en-têtes mais aucune ligne d\'élève valide n\'a été détectée en dessous.'
+                    'details' => 'Aucune ligne valide détectée.'
                 ], 422);
             }
 
@@ -272,12 +277,20 @@ class StudentImportController extends Controller
         return $images;
     }
 
-    private function formatExcelDate($value)
+    private function formatExcelDate($rawValue, $formattedValue = null)
     {
+        if (is_numeric($rawValue) && $rawValue > 0) {
+            try {
+                return Carbon::instance(Date::excelToDateTimeObject($rawValue))->format('Y-m-d');
+            } catch (\Exception $e) {}
+        }
+
+        $value = $formattedValue ?? (string) $rawValue;
         if (empty($value)) return null;
+
         try {
-            if (is_numeric($value)) return Carbon::instance(Date::excelToDateTimeObject($value))->format('Y-m-d');
             if (preg_match('/(\d{2})\/(\d{2})\/(\d{4})/', $value, $m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
+            if (preg_match('/(\d{2})-(\d{2})-(\d{4})/', $value, $m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
             return Carbon::parse($value)->format('Y-m-d');
         } catch (\Exception $e) {
             return null;
@@ -294,42 +307,66 @@ class StudentImportController extends Controller
         $ecole = Auth::user()->ecole;
         abort_if(!$ecole, 403);
 
-        $successCount   = 0;
-        $duplicateCount = 0;
-        $errorCount     = 0;
-        $duplicates     = [];
+        $successCount = 0;
+        $errorCount   = 0;
+
+        // Normalisation + nettoyage _x000d_
+        $studentsNormalized = collect($request->students)->map(function ($s) {
+            $s['matricule'] = !empty($s['matricule'])
+                ? preg_replace('/\s+/', '', trim((string) $s['matricule']))
+                : null;
+            foreach (['nom', 'prenom', 'lieu_naissance'] as $field) {
+                if (!empty($s[$field])) {
+                    $s[$field] = preg_replace('/_x000[Dd]_/u', ' ', $s[$field]);
+                    $s[$field] = trim(preg_replace('/\s{2,}/', ' ', $s[$field]));
+                }
+            }
+            return $s;
+        })->toArray();
+
+        // Vérification doublons internes
+        $matriculesDansFichier = collect($studentsNormalized)
+            ->pluck('matricule')->filter()->values();
+
+        $doublonsInternes = $matriculesDansFichier->duplicates()->values()->toArray();
+        if (!empty($doublonsInternes)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le fichier contient des matricules en double : ' . implode(', ', $doublonsInternes),
+                'type'    => 'duplicate_matricule',
+            ], 422);
+        }
+
+        // Vérification doublons base
+        if ($matriculesDansFichier->isNotEmpty()) {
+            $existantsEnBase = Eleve::whereIn('matricule_edumaster', $matriculesDansFichier->toArray())
+                ->pluck('matricule_edumaster')->toArray();
+            if (!empty($existantsEnBase)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => count($existantsEnBase) . ' matricule(s) déjà enregistré(s) : ' . implode(', ', $existantsEnBase),
+                    'type'    => 'duplicate_matricule',
+                ], 422);
+            }
+        }
 
         try {
-            DB::transaction(function () use ($request, $ecole, &$successCount, &$duplicateCount, &$errorCount, &$duplicates) {
-                foreach ($request->students as $index => $s) {
-                    Log::info("Traitement élève " . ($index + 1) . ": " . json_encode($s));
+            DB::transaction(function () use ($studentsNormalized, $request, $ecole, &$successCount, &$errorCount) {
+                foreach ($studentsNormalized as $index => $s) {
 
                     if (empty($s['nom']) || empty($s['prenom']) || empty($s['date_naissance'])) {
                         throw new \Exception("Données critiques manquantes ligne " . ($index + 1));
                     }
 
-                    // Vérifier doublon matricule seulement si présent
-                    if (!empty($s['matricule']) && $s['matricule'] !== null) {
-                        if (Eleve::where('matricule_edumaster', $s['matricule'])->exists()) {
-                            Log::warning("Matricule déjà existant: " . $s['matricule']);
-                            $duplicates[]   = $s['matricule'];
-                            $duplicateCount++;
-                            throw new \Exception("Doublon de matricule détecté: " . $s['matricule'] . " (ligne " . ($index + 1) . ")");
-                        }
-                    }
-
-                    // Photo
                     $photoPath = null;
                     if (!empty($s['photo']) && preg_match('/^data:image\/(\w+);base64,/', $s['photo'], $type)) {
                         $data      = base64_decode(substr($s['photo'], strpos($s['photo'], ',') + 1));
                         $photoPath = 'eleves/photos/eleve_' . uniqid() . '.' . strtolower($type[1]);
                         Storage::disk('public')->put($photoPath, $data);
-                        Log::info("Photo enregistrée: " . $photoPath);
                     }
 
-                    // QR Code enrichi
                     $qrContent  = 'Nom: ' . $s['nom'] . "\nPrenom: " . $s['prenom'] . "\nEducMaster: " . ($s['matricule'] ?? '');
-                    $qrCodePath = 'eleves/qrcodes/' . Str::slug(($s['matricule'] ?? '') ?: $s['nom'] . '_' . $index) . '.png';
+                    $qrCodePath = 'eleves/qrcodes/' . Str::slug(($s['matricule'] ?: $s['nom'] . '_' . $index)) . '.png';
                     $qrFullPath = storage_path('app/public/' . $qrCodePath);
 
                     if (!file_exists(dirname($qrFullPath))) {
@@ -339,7 +376,6 @@ class StudentImportController extends Controller
                     $writer = new PngWriter();
                     $writer->write(new QrCode($qrContent))->saveToFile($qrFullPath);
 
-                    // Résolution classe + série
                     $classe   = Classe::find($request->classe_id);
                     $classeId = $classe->id;
 
@@ -347,77 +383,43 @@ class StudentImportController extends Controller
                         $serie = Serie::where('nom', $request->serie)->first();
                         if ($serie) {
                             $resolved = Classe::where('serie_id', $serie->id)
-                                ->where('nom', $classe->nom)
-                                ->first();
+                                ->where('nom', $classe->nom)->first();
                             if ($resolved) $classeId = $resolved->id;
                         }
                     }
 
-                    // Téléphone : valeur élève sinon téléphone école
                     $telephone = (!empty($s['telephone_tuteur']) && $s['telephone_tuteur'] !== '00000000')
                         ? $s['telephone_tuteur']
                         : ($ecole->telephone ?? '00000000');
 
-                    try {
-                        $eleve = Eleve::create([
-                            'ecole_id'            => $ecole->id,
-                            'classe_id'           => $classeId,
-                            'nom'                 => $s['nom'],
-                            'prenom'              => $s['prenom'],
-                            'sexe'                => $s['sexe'],
-                            'nationalite'         => $s['nationalite'] ?? 'BENIN',
-                            'date_naissance'      => $s['date_naissance'],
-                            'lieu_naissance'      => $s['lieu_naissance'] ?? '',
-                            'telephone_tuteur'    => $telephone,
-                            'photo'               => $photoPath,
-                            'matricule_edumaster' => $s['matricule'] ?? null,
-                            'qr_code'             => $qrCodePath,
-                        ]);
+                    Eleve::create([
+                        'ecole_id'            => $ecole->id,
+                        'classe_id'           => $classeId,
+                        'nom'                 => $s['nom'],
+                        'prenom'              => $s['prenom'],
+                        'sexe'                => $s['sexe'],
+                        'nationalite'         => $s['nationalite'] ?? 'BENIN',
+                        'date_naissance'      => $s['date_naissance'],
+                        'lieu_naissance'      => $s['lieu_naissance'] ?? '',
+                        'telephone_tuteur'    => $telephone,
+                        'photo'               => $photoPath,
+                        'matricule_edumaster' => $s['matricule'] ?? null,
+                        'numero_table'        => $s['numero_table'] ?? null,
+                        'qr_code'             => $qrCodePath,
+                    ]);
 
-                        Log::info("Élève créé: ID=" . $eleve->id . " Matricule=" . ($s['matricule'] ?? 'NULL'));
-                        $successCount++;
-
-                    } catch (\Illuminate\Database\QueryException $e) {
-                        if (str_contains($e->getMessage(), 'UNIQUE') || str_contains($e->getMessage(), 'matricule_edumaster')) {
-                            Log::error("Erreur contrainte unique matricule: " . ($s['matricule'] ?? ''));
-                            $duplicates[]   = $s['matricule'] ?? '';
-                            $duplicateCount++;
-                        } else {
-                            Log::error("Erreur création élève " . ($index + 1) . ": " . $e->getMessage());
-                            $errorCount++;
-                        }
-                    }
+                    $successCount++;
                 }
             });
-
-            Log::info("=== FIN IMPORTATION === Succès: $successCount, Doublons: $duplicateCount, Erreurs: $errorCount");
-
-            if ($duplicateCount > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "$duplicateCount doublon(s) détecté(s): " . implode(', ', $duplicates),
-                    'stats'   => compact('successCount', 'duplicateCount', 'errorCount', 'duplicates')
-                ]);
-            }
 
             return response()->json([
                 'success' => true,
                 'message' => "$successCount élève(s) importé(s) avec succès",
-                'stats'   => compact('successCount', 'duplicateCount', 'errorCount')
+                'stats'   => compact('successCount', 'errorCount')
             ]);
 
         } catch (\Exception $e) {
             Log::error('Erreur StoreAll Import: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-
-            if (str_contains($e->getMessage(), 'Doublon de matricule')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                    'type'    => 'duplicate_matricule'
-                ], 422);
-            }
-
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'enregistrement des élèves.',

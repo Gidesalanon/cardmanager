@@ -18,18 +18,16 @@ function dynamicFont(string $text, array $steps): string {
     return end($steps);
 }
 
-/**
- * Détermine si une classe est du secondaire (6e → Tle).
- * Utilise les noms réels en base : 6e, 5e, 4e, 3e, 2nde, 1ère, Tle.
- */
+function cleanText(string $text): string {
+    $text = preg_replace('/_x000[Dd]_/u', ' ', $text);
+    $text = preg_replace('/\r\n|\r|\n/', ' ', $text);
+    return trim(preg_replace('/\s{2,}/', ' ', $text));
+}
+
 function isSecondaire(string $nomClasse): bool {
     return (bool) preg_match('/^(6e|5e|4e|3e|2nde|1ère|Tle|Terminale)$/i', trim($nomClasse));
 }
 
-/**
- * Détermine si la série doit s'afficher sur la carte.
- * Uniquement pour 2nde, 1ère et Tle — pas pour 6e/5e/4e/3e.
- */
 function afficherSerie(string $nomClasse): bool {
     return (bool) preg_match('/^(2nde|1ère|Tle|Terminale)$/i', trim($nomClasse));
 }
@@ -47,29 +45,42 @@ $premierDirecteur = $premiereEcole->directeur;
         ? public_path('assets/card/MESTFP.png')
         : public_path('assets/card/memp.png');
 
+    $nomPropre    = cleanText($eleve->nom ?? '');
+    $prenomPropre = cleanText($eleve->prenom ?? '');
+    $lieuPropre   = cleanText($eleve->lieu_naissance ?? '');
+
     $fontNomEcoleRecto = dynamicFont($eleve->ecole->nom_ecole ?? '', [
         18 => '6.5pt', 28 => '5.5pt', 40 => '4.8pt', 999 => '4pt',
     ]);
-    $fontNom = dynamicFont($eleve->nom ?? '', [
+    $fontNom = dynamicFont($nomPropre, [
         12 => '10px', 18 => '9px', 25 => '8px', 999 => '7px',
     ]);
-    $fontPrenom = dynamicFont($eleve->prenom ?? '', [
+    $fontPrenom = dynamicFont($prenomPropre, [
         12 => '10px', 18 => '9px', 25 => '8px', 35 => '7px', 999 => '6px',
     ]);
-    $naissance     = ($eleve->date_naissance?->format('d/m/Y') ?? '') . ' à ' . ($eleve->lieu_naissance ?? '');
+    $naissance     = ($eleve->date_naissance?->format('d/m/Y') ?? '') . ' à ' . $lieuPropre;
     $fontNaissance = dynamicFont($naissance, [
         22 => '10px', 30 => '9px', 38 => '8px', 999 => '7px',
     ]);
 
-    // Affichage classe : "3e" seul, "2nde A" avec série
     $classeAffichee = $nomClasse;
     if (afficherSerie($nomClasse) && $eleve->classe->serie) {
         $classeAffichee .= ' ' . $eleve->classe->serie->nom;
     }
+
+    $numTable = $eleve->numero_table ?? '';
+    $lenNum   = mb_strlen($numTable);
+    if ($lenNum === 0)      $fontNumTable = '11pt';
+    elseif ($lenNum <= 3)   $fontNumTable = '11pt';
+    elseif ($lenNum <= 5)   $fontNumTable = '10pt';
+    elseif ($lenNum <= 7)   $fontNumTable = '9pt';
+    elseif ($lenNum <= 10)  $fontNumTable = '7.5pt';
+    else                    $fontNumTable = '6pt';
 @endphp
 
 {{-- ==================== RECTO ==================== --}}
-<div style="width:85.6mm; height:54mm; position:relative; overflow:hidden; background-color:white; page-break-after:always; page-break-inside:avoid;">
+<div style="width:85.6mm; height:54mm; position:relative; overflow:hidden;
+            background-color:white; page-break-after:always; page-break-inside:avoid;">
 
     {{-- Logo ministère --}}
     <img src="{{ $logoPath }}" style="position:absolute; top:1.5mm; left:2mm; width:32mm; height:auto;">
@@ -79,17 +90,32 @@ $premierDirecteur = $premiereEcole->directeur;
         <div style="font-size:{{ $fontNomEcoleRecto }}; font-weight:900; line-height:1.2;">
             {{ strtoupper($eleve->ecole->nom_ecole ?? 'ECOLE') }}
         </div>
-        <div style="font-size:5pt; color:#333; margin-top:2px;">Tél: {{ $eleve->ecole->telephone ?? '' }}</div>
+        <div style="font-size:5pt; color:#333; margin-top:2px;">
+            Tél: {{ $eleve->ecole->telephone ?? '' }}
+        </div>
     </div>
 
     {{-- Case Numéro de table --}}
-    <div style="position:absolute; top:7mm; right:2mm; text-align:right;">
-        <div style="border:0.4mm solid #000; width:24mm; height:4mm;"></div>
-        <div style="font-size:5pt; font-weight:600; margin-top:0.5mm; text-align:right;">Numéro de table</div>
+    <div style="position:absolute; top:7mm; right:2mm; width:24mm;">
+        <div style="border:0.4mm solid #000; width:24mm; height:4mm;
+                    display:flex; align-items:center; justify-content:center;
+                    overflow:hidden;">
+            @if($numTable)
+                <span style="font-size:{{ $fontNumTable }}; font-weight:900;
+                             line-height:1; letter-spacing:0.3px;">
+                    {{ $numTable }}
+                </span>
+            @endif
+        </div>
+        <div style="font-size:4.5pt; font-weight:600; margin-top:0.4mm;
+                    text-align:right; width:24mm;">
+            Numéro de table
+        </div>
     </div>
 
     {{-- Titre carte --}}
-    <div style="position:absolute; top:12.5mm; width:100%; text-align:center; color:#e8112d; font-size:7pt; font-weight:900;">
+    <div style="position:absolute; top:12.5mm; width:100%; text-align:center;
+                color:#e8112d; font-size:7pt; font-weight:900;">
         CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}
     </div>
 
@@ -106,15 +132,15 @@ $premierDirecteur = $premiereEcole->directeur;
         <table style="width:100%; border-collapse:collapse;">
             <tr>
                 <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Nom</td>
-                <td style="font-size:{{ $fontNom }}; padding-bottom:0.5mm; vertical-align:top; word-break:break-word;">: {{ strtoupper($eleve->nom) }}</td>
+                <td style="font-size:{{ $fontNom }}; padding-bottom:0.5mm; vertical-align:top; word-break:break-word;">: {{ strtoupper($nomPropre) }}</td>
             </tr>
             <tr>
                 <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Prénoms</td>
-                <td style="font-size:{{ $fontPrenom }}; padding-bottom:0.5mm; vertical-align:top; word-break:break-word;">: {{ ucwords($eleve->prenom) }}</td>
+                <td style="font-size:{{ $fontPrenom }}; padding-bottom:0.5mm; vertical-align:top; word-break:break-word;">: {{ ucwords(strtolower($prenomPropre)) }}</td>
             </tr>
             <tr>
                 <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Né(e) le</td>
-                <td style="font-size:{{ $fontNaissance }}; padding-bottom:0.5mm; vertical-align:top;">: {{ $eleve->date_naissance?->format('d/m/Y') }} à {{ $eleve->lieu_naissance }}</td>
+                <td style="font-size:{{ $fontNaissance }}; padding-bottom:0.5mm; vertical-align:top;">: {{ $eleve->date_naissance?->format('d/m/Y') }} à {{ $lieuPropre }}</td>
             </tr>
             <tr>
                 <td style="font-weight:bold; width:11mm; font-size:9px; padding-bottom:0.5mm; vertical-align:top;">Classe</td>
@@ -163,53 +189,56 @@ $premierDirecteur = $premiereEcole->directeur;
     $sexeDirVerso      = $premierDirecteur->sexe ?? 'M';
 @endphp
 
-<div style="width:85.6mm; height:54mm; position:relative; overflow:hidden; background-color:white; page-break-inside:avoid; page-break-after:avoid;">
+<div style="width:85.6mm; height:54mm; position:relative; overflow:hidden;
+            background-color:white; page-break-inside:avoid; page-break-after:avoid;">
 
-    {{-- 1. Barre tricolore haut --}}
     <div style="position:absolute; top:1.5mm; left:0; right:0; text-align:center;">
         <img src="{{ $tricolorePath }}" style="width:40mm; height:3.5mm; display:block; margin:0 auto;">
     </div>
 
-    {{-- 2. Nom école --}}
-    <div style="position:absolute; top:6.5mm; left:0; right:0; text-align:center; font-size:{{ $fontNomEcoleVerso }}; font-weight:900; letter-spacing:0.5px; padding:0 3mm; line-height:1.2;">
+    <div style="position:absolute; top:6.5mm; left:0; right:0; text-align:center;
+                font-size:{{ $fontNomEcoleVerso }}; font-weight:900;
+                letter-spacing:0.5px; padding:0 3mm; line-height:1.2;">
         {{ strtoupper($premiereEcole->nom_ecole ?? '') }}
     </div>
 
-    {{-- 3. Téléphone --}}
     <div style="position:absolute; top:13mm; left:0; right:0; text-align:center; font-size:6pt; color:#333;">
         Tél: {{ $telDirecteurVerso }}
     </div>
 
-    {{-- 4. Carte d'identité scolaire --}}
     <div style="position:absolute; top:16mm; left:0; right:0; text-align:center; font-size:6.5pt; font-weight:700;">
         CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}
     </div>
 
-    {{-- 5. Cachet + Signature --}}
     <div style="position:absolute; top:19mm; left:0; right:0; height:16mm;">
         @if($premierDirecteur->cachet)
             <img src="{{ public_path('storage/' . $premierDirecteur->cachet) }}"
-                 style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-                        width:16mm; height:16mm; object-fit:contain; opacity:0.92;">
+                 style="position:absolute;
+                        width:18mm; height:18mm;
+                        object-fit:contain;
+                        left:50%; top:50%;
+                        transform:translate(-60%, -50%);
+                        opacity:0.90;">
         @endif
         @if($premierDirecteur->signature)
             <img src="{{ public_path('storage/' . $premierDirecteur->signature) }}"
-                 style="position:absolute; left:50%; top:50%; transform:translate(-30%,-55%);
-                        width:28mm; height:11mm; object-fit:contain;">
+                 style="position:absolute;
+                        width:30mm; height:12mm;
+                        object-fit:contain;
+                        left:50%; top:50%;
+                        transform:translate(-35%, -50%);">
         @endif
     </div>
 
-    {{-- 6. Le Directeur / La Directrice --}}
     <div style="position:absolute; top:36mm; left:0; right:0; text-align:center; font-size:7pt; font-weight:700;">
         {{ $sexeDirVerso == 'F' ? 'La Directrice' : 'Le Directeur' }}
     </div>
 
-    {{-- 7. Nom Prénom directeur --}}
-    <div style="position:absolute; top:39.5mm; left:0; right:0; text-align:center; font-size:{{ $fontNomDirecteurVerso }}; font-weight:700; padding:0 3mm; line-height:1.2;">
+    <div style="position:absolute; top:39.5mm; left:0; right:0; text-align:center;
+                font-size:{{ $fontNomDirecteurVerso }}; font-weight:700; padding:0 3mm; line-height:1.2;">
         {{ strtoupper($premierDirecteur->nom ?? '') }} {{ $premierDirecteur->prenom ?? '' }}
     </div>
 
-    {{-- 8. Barre tricolore bas --}}
     <div style="position:absolute; top:48mm; left:0; right:0; text-align:center;">
         <img src="{{ $tricolorePath }}" style="width:40mm; height:3.5mm; display:block; margin:0 auto;">
     </div>

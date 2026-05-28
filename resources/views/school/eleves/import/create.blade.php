@@ -278,6 +278,7 @@
                         <tr>
                             <th>Photo</th>
                             <th>N° EducMaster</th>
+                            <th>N° Table</th>
                             <th>Nom</th>
                             <th>Prénom</th>
                             <th>Sexe</th>
@@ -301,6 +302,10 @@
                                 <td>
                                     <input class="form-input" x-model="s.matricule"
                                            placeholder="Optionnel" style="width:120px;">
+                                </td>
+                                <td>
+                                    <input class="form-input" x-model="s.numero_table"
+                                        placeholder="Optionnel" style="width:110px;">
                                 </td>
                                 <td><input class="form-input" x-model="s.nom" style="min-width:100px;"></td>
                                 <td><input class="form-input" x-model="s.prenom" style="min-width:120px;"></td>
