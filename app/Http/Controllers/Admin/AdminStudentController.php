@@ -13,6 +13,7 @@ use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class AdminStudentController extends Controller
 {
@@ -62,11 +63,15 @@ class AdminStudentController extends Controller
 
         $eleves = $query->paginate(15)->withQueryString();
 
+        // Pour l'export des cartes : classes réellement présentes dans chaque école
+        $ecoleClasses = $this->classesParEcole();
+
         return view('admin.eleves.index', compact(
             'eleves',
             'classes',
             'ecoles',
-            'filters'
+            'filters',
+            'ecoleClasses'
         ));
     }
 
@@ -259,4 +264,193 @@ public function exportEcoleCardsPdf(Request $request)
 
     return $pdf->download($filename);
 }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CARTES PAR ÉCOLE ET PAR CLASSE
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Libellé d'une classe : "4e", "CM2", "2nde C"...
+     * La série n'est ajoutée que pour 2nde / 1ère / Tle (comme sur la carte).
+     */
+    private function classeLabel(Classe $classe): string
+    {
+        $label = $classe->nom;
+
+        if (preg_match('/^(2nde|1ère|Tle|Terminale)$/i', trim($classe->nom)) && $classe->serie) {
+            $label .= ' ' . $classe->serie->nom;
+        }
+
+        return $label;
+    }
+
+    /**
+     * Identifiants de toutes les lignes "classes" qui forment une même classe
+     * à l'affichage : 6e..3e = toutes séries confondues, 2nde/1ère/Tle = une série.
+     */
+    private function classeGroupIds(Classe $classe): array
+    {
+        $query = Classe::where('nom', $classe->nom)
+            ->where('section_id', $classe->section_id);
+
+        if (preg_match('/^(2nde|1ère|Tle|Terminale)$/i', trim($classe->nom))) {
+            $query->where('serie_id', $classe->serie_id);
+        }
+
+        return $query->pluck('id')->all();
+    }
+
+    /**
+     * Nom de fichier : ecole_golo_djigbe_classe_4eme.pdf
+     */
+    private function cardsFileName(Ecole $ecole, Classe $classe): string
+    {
+        $classeSlug = Str::slug($this->classeLabel($classe), '_');
+
+        // 6e, 5e, 4e, 3e => 6eme, 5eme, 4eme, 3eme
+        $classeSlug = preg_replace('/^(\d)e(?=_|$)/', '$1eme', $classeSlug);
+
+        return 'ecole_' . Str::slug($ecole->nom_ecole, '_') . '_classe_' . $classeSlug . '.pdf';
+    }
+
+    /**
+     * Pour chaque école : la liste des classes qui ont des élèves, avec l'effectif.
+     * Format : [ecole_id => [['id' => .., 'label' => '4e', 'total' => 32], ...]]
+     */
+    private function classesParEcole()
+    {
+        $counts = DB::table('eleves')
+            ->select('ecole_id', 'classe_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('ecole_id', 'classe_id')
+            ->get();
+
+        $classesById = Classe::with('serie')
+            ->whereIn('id', $counts->pluck('classe_id')->unique())
+            ->get()
+            ->keyBy('id');
+
+        return $counts
+            ->groupBy('ecole_id')
+            ->map(function ($rows) use ($classesById) {
+                return $rows
+                    ->filter(fn ($r) => $classesById->has($r->classe_id))
+                    ->groupBy(fn ($r) => $this->classeLabel($classesById[$r->classe_id]))
+                    ->map(fn ($group, $label) => [
+                        'id'    => $group->first()->classe_id,
+                        'label' => $label,
+                        'total' => $group->sum('total'),
+                    ])
+                    ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+                    ->values();
+            });
+    }
+
+    private function buildCardsPdf($eleves)
+    {
+        $activeYear = \App\Models\SchoolYear::active()->first();
+
+        return Pdf::loadView('admin.eleves.card.bulk-cards', compact('eleves', 'activeYear'))
+            ->setPaper([0, 0, 242.64, 153.07], 'portrait');
+    }
+
+    /**
+     * Cartes d'UNE classe d'UNE école (classe_id = id), ou de toutes les classes
+     * de l'école dans un ZIP (classe_id = "all"), un PDF par classe.
+     */
+    public function exportClassCardsPdf(Request $request)
+    {
+        $request->validate([
+            'ecole_id'  => 'required|exists:ecoles,id',
+            'classe_id' => 'required',
+        ]);
+
+        if ($request->classe_id !== 'all') {
+            $request->validate(['classe_id' => 'exists:classes,id']);
+        }
+
+        $ecole = Ecole::with('directeur')->findOrFail($request->ecole_id);
+
+        if ($request->classe_id === 'all') {
+            return $this->exportAllClassesZip($ecole);
+        }
+
+        $classe = Classe::with('serie')->findOrFail($request->classe_id);
+
+        $eleves = Eleve::with(['ecole.directeur', 'classe.serie'])
+            ->where('ecole_id', $ecole->id)
+            ->whereIn('classe_id', $this->classeGroupIds($classe))
+            ->orderBy('nom')
+            ->orderBy('prenom')
+            ->get();
+
+        if ($eleves->isEmpty()) {
+            return redirect()
+                ->route('admin.students.index')
+                ->with('error', 'Aucun élève en ' . $this->classeLabel($classe) . ' pour cette école.');
+        }
+
+        return $this->buildCardsPdf($eleves)
+            ->download($this->cardsFileName($ecole, $classe));
+    }
+
+    private function exportAllClassesZip(Ecole $ecole)
+    {
+        if (!class_exists(\ZipArchive::class)) {
+            return redirect()
+                ->route('admin.students.index')
+                ->with('error', "L'extension PHP ZipArchive n'est pas disponible sur ce serveur.");
+        }
+
+        $groupes = Eleve::with(['ecole.directeur', 'classe.serie'])
+            ->where('ecole_id', $ecole->id)
+            ->orderBy('nom')
+            ->orderBy('prenom')
+            ->get()
+            ->filter(fn ($e) => $e->classe)
+            ->groupBy(fn ($e) => $this->classeLabel($e->classe));
+
+        if ($groupes->isEmpty()) {
+            return redirect()
+                ->route('admin.students.index')
+                ->with('error', 'Aucun élève trouvé pour cette école.');
+        }
+
+        @set_time_limit(300);
+
+        $tmpDir = storage_path('app/temp');
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0755, true);
+        }
+
+        $zipPath = $tmpDir . '/cartes_' . $ecole->id . '_' . uniqid() . '.zip';
+        $zip = new \ZipArchive();
+
+        if ($zip->open($zipPath, \ZipArchive::CREATE) !== true) {
+            return redirect()
+                ->route('admin.students.index')
+                ->with('error', "Impossible de créer l'archive ZIP.");
+        }
+
+        $tmpFiles = [];
+
+        foreach ($groupes as $eleves) {
+            $tmp = $tmpDir . '/pdf_' . uniqid() . '.pdf';
+            file_put_contents($tmp, $this->buildCardsPdf($eleves)->output());
+
+            $zip->addFile($tmp, $this->cardsFileName($ecole, $eleves->first()->classe));
+            $tmpFiles[] = $tmp;
+        }
+
+        $zip->close();
+
+        foreach ($tmpFiles as $f) {
+            @unlink($f);
+        }
+
+        $zipName = 'ecole_' . Str::slug($ecole->nom_ecole, '_') . '_cartes_par_classe.zip';
+
+        return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
 }

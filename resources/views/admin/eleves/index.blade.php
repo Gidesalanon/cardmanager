@@ -98,7 +98,7 @@
                 <i class="fa-solid fa-plus"></i> Nouvel élève
             </a>
 
-            <form method="GET" action="{{ route('admin.students.export.ecole.cards') }}"
+            <form method="GET" action="{{ route('admin.students.export.class.cards') }}"
                   style="display:flex; align-items:center; gap:8px;"
                   onsubmit="return validerGenerationMassive(this)">
                 <select name="ecole_id" id="select-ecole-massive"
@@ -107,6 +107,10 @@
                     @foreach($ecoles as $ecole)
                         <option value="{{ $ecole->id }}">{{ $ecole->nom_ecole }}</option>
                     @endforeach
+                </select>
+                <select name="classe_id" id="select-classe-massive"
+                        class="form-input select-ecole-massive" disabled>
+                    <option value="">-- Classe --</option>
                 </select>
                 <button type="submit" class="btn"
                         style="background:linear-gradient(135deg,#7c3aed,#a855f7);
@@ -290,17 +294,64 @@
 
 @push('scripts')
 <script>
+// Classes (avec effectif) de chaque école, calculées côté serveur
+const ECOLE_CLASSES = @json($ecoleClasses);
+
 function validerGenerationMassive(form) {
     const select = document.getElementById('select-ecole-massive');
+    const classeSelect = document.getElementById('select-classe-massive');
     if (!select.value) {
         Swal.fire({ icon: 'warning', title: 'École non sélectionnée',
             text: 'Veuillez sélectionner une école avant de générer les cartes.' });
+        return false;
+    }
+    if (!classeSelect.value) {
+        Swal.fire({ icon: 'warning', title: 'Classe non sélectionnée',
+            text: 'Veuillez sélectionner une classe (ou « Toutes les classes »).' });
         return false;
     }
     Swal.fire({ title: 'Génération en cours...', icon: 'info',
         showConfirmButton: false, timer: 2000, timerProgressBar: true });
     return true;
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const ecoleSelect  = document.getElementById('select-ecole-massive');
+    const classeSelect = document.getElementById('select-classe-massive');
+    if (!ecoleSelect || !classeSelect) return;
+
+    function addOption(value, text) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = text;
+        classeSelect.appendChild(opt);
+    }
+
+    ecoleSelect.addEventListener('change', function () {
+        const classes = ECOLE_CLASSES[this.value] || [];
+        classeSelect.innerHTML = '';
+
+        if (!this.value) {
+            addOption('', '-- Classe --');
+            classeSelect.disabled = true;
+            return;
+        }
+        if (classes.length === 0) {
+            addOption('', 'Aucune classe avec élèves');
+            classeSelect.disabled = true;
+            return;
+        }
+
+        addOption('', '-- Classe --');
+        classes.forEach(function (c) {
+            addOption(c.id, c.label + ' — ' + c.total + (c.total > 1 ? ' élèves' : ' élève'));
+        });
+        if (classes.length > 1) {
+            addOption('all', 'Toutes les classes (ZIP)');
+        }
+        classeSelect.disabled = false;
+    });
+});
 
 function confirmDelete(id, name) {
     Swal.fire({
