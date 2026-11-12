@@ -10,6 +10,7 @@
 <body>
 
 @php
+if (!function_exists('dynamicFont')) {
 function dynamicFont(string $text, array $steps): string {
     $len = mb_strlen(trim($text));
     foreach ($steps as $limit => $size) {
@@ -17,19 +18,26 @@ function dynamicFont(string $text, array $steps): string {
     }
     return end($steps);
 }
+}
 
+if (!function_exists('cleanText')) {
 function cleanText(string $text): string {
     $text = preg_replace('/_x000[Dd]_/u', ' ', $text);
     $text = preg_replace('/\r\n|\r|\n/', ' ', $text);
     return trim(preg_replace('/\s{2,}/', ' ', $text));
 }
+}
 
+if (!function_exists('isSecondaire')) {
 function isSecondaire(string $nomClasse): bool {
     return (bool) preg_match('/^(6e|5e|4e|3e|2nde|1ère|Tle|Terminale)$/i', trim($nomClasse));
 }
+}
 
+if (!function_exists('afficherSerie')) {
 function afficherSerie(string $nomClasse): bool {
     return (bool) preg_match('/^(2nde|1ère|Tle|Terminale)$/i', trim($nomClasse));
+}
 }
 
 $tricolorePath    = public_path('assets/card/tricolore.png');

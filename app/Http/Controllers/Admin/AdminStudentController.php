@@ -418,6 +418,7 @@ public function exportEcoleCardsPdf(Request $request)
         }
 
         @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
 
         $tmpDir = storage_path('app/temp');
         if (!is_dir($tmpDir)) {
@@ -434,16 +435,40 @@ public function exportEcoleCardsPdf(Request $request)
         }
 
         $tmpFiles = [];
+        $classeEnCours = null;
 
-        foreach ($groupes as $eleves) {
-            $tmp = $tmpDir . '/pdf_' . uniqid() . '.pdf';
-            file_put_contents($tmp, $this->buildCardsPdf($eleves)->output());
+        try {
+            foreach ($groupes as $label => $eleves) {
+                $classeEnCours = $label;
 
-            $zip->addFile($tmp, $this->cardsFileName($ecole, $eleves->first()->classe));
-            $tmpFiles[] = $tmp;
+                $tmp = $tmpDir . '/pdf_' . uniqid() . '.pdf';
+                $tmpFiles[] = $tmp;
+
+                $pdf = $this->buildCardsPdf($eleves);
+                file_put_contents($tmp, $pdf->output());
+                unset($pdf);
+                gc_collect_cycles();
+
+                $zip->addFile($tmp, $this->cardsFileName($ecole, $eleves->first()->classe));
+            }
+
+            // ZipArchive lit les fichiers au moment de close() : ne rien supprimer avant
+            $zip->close();
+        } catch (\Throwable $e) {
+            Log::error('Export ZIP cartes : ' . $e->getMessage(), [
+                'ecole_id' => $ecole->id,
+                'classe'   => $classeEnCours,
+                'fichier'  => $e->getFile() . ':' . $e->getLine(),
+            ]);
+
+            try { $zip->close(); } catch (\Throwable $ignored) {}
+            foreach ($tmpFiles as $f) { @unlink($f); }
+            @unlink($zipPath);
+
+            return redirect()
+                ->route('admin.students.index')
+                ->with('error', 'La génération du ZIP a échoué (classe : ' . ($classeEnCours ?? '?') . '). Génère les classes une par une ; le détail est dans le journal.');
         }
-
-        $zip->close();
 
         foreach ($tmpFiles as $f) {
             @unlink($f);
