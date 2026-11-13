@@ -25,6 +25,10 @@
 .filter-bar .form-label { font-size: 0.78rem; margin-bottom: 5px; font-weight: 600; }
 .filter-bar .filter-extra { grid-column: 1 / -1; display: flex; gap: 14px; flex-wrap: wrap; align-items: end; }
 .filter-bar .filter-extra > div { min-width: 180px; }
+.bulk-hint { padding: 8px 20px; font-size: 0.78rem; color: var(--text-secondary); }
+.bulk-bar { padding: 10px 20px; display: none; gap: 14px; align-items: center; flex-wrap: wrap; background: rgba(201,168,76,0.12); border-left: 3px solid #c9a84c; font-size: 0.85rem; }
+.bulk-bar a { color: inherit; text-decoration: underline; cursor: pointer; }
+.row-check, #check-all { width: 16px; height: 16px; cursor: pointer; }
 
 .active-filters {
     padding: 10px 20px;
@@ -207,10 +211,26 @@
     </div>
     @endif
 
+    @if($filters['ecole_id'])
+    <div id="bulk-bar" class="bulk-bar">
+        <span id="bulk-count"></span>
+        <button type="button" id="bulk-open" class="btn btn-primary">
+            <i class="fa-solid fa-pen-to-square"></i> Modifier la sélection
+        </button>
+        <a href="#" id="bulk-select-all" style="display:none;"></a>
+        <a href="#" id="bulk-clear">Tout désélectionner</a>
+    </div>
+    @else
+    <div class="bulk-hint">Choisissez une école pour pouvoir modifier plusieurs élèves à la fois (division, classe).</div>
+    @endif
+
     <div class="table-container">
         <table>
             <thead>
                 <tr>
+                    @if($filters['ecole_id'])
+                    <th><input type="checkbox" id="check-all" title="Tout cocher sur cette page"></th>
+                    @endif
                     <th>Photo</th>
                     <th>Matricule</th>
                     <th>N° Table</th>
@@ -226,6 +246,9 @@
             <tbody>
                 @forelse($eleves as $eleve)
                 <tr>
+                    @if($filters['ecole_id'])
+                    <td><input type="checkbox" class="row-check" value="{{ $eleve->id }}"></td>
+                    @endif
                     <td>
                         @if($eleve->photo)
                             <img src="{{ asset('storage/'.$eleve->photo) }}" width="40" height="40"
@@ -285,7 +308,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="10" style="text-align:center; padding:2rem; color:var(--text-secondary);">
+                    <td colspan="{{ $filters['ecole_id'] ? 11 : 10 }}" style="text-align:center; padding:2rem; color:var(--text-secondary);">
                         Aucun élève trouvé.
                     </td>
                 </tr>
@@ -392,12 +415,190 @@ function confirmDelete(id, name) {
 
 document.addEventListener('DOMContentLoaded', function () {
     @if(session('success'))
-        Swal.fire({ icon: 'success', title: 'Succès', text: "{{ session('success') }}",
+        Swal.fire({ icon: 'success', title: 'Succès', text: @json(session('success')),
             timer: 3000, showConfirmButton: false, toast: true, position: 'top-end' });
     @endif
     @if(session('error'))
-        Swal.fire({ icon: 'error', title: 'Erreur', text: "{{ session('error') }}" });
+        Swal.fire({ icon: 'error', title: 'Erreur', text: @json(session('error')) });
     @endif
 });
+
+// ====== Modification en masse (division / classe) ======
+(function () {
+    const bar = document.getElementById('bulk-bar');
+    if (!bar) return; // actif seulement quand une école est choisie dans le filtre
+
+    const BULK = @json($bulk);
+    const ECOLE_ID = {{ (int) ($filters['ecole_id'] ?? 0) }};
+    const TOTAL = {{ $eleves->total() }};
+    const CSRF = '{{ csrf_token() }}';
+    const ACTION = '{{ route('admin.students.bulk.update') }}';
+    const AVEC_SERIE = /^(2nde|1ère|Tle|Terminale)$/i;
+
+    const checkAll = document.getElementById('check-all');
+    const countEl = document.getElementById('bulk-count');
+    const selAllLink = document.getElementById('bulk-select-all');
+    let modeFiltre = false;
+
+    const rows = () => Array.from(document.querySelectorAll('.row-check'));
+    const checked = () => rows().filter(function (c) { return c.checked; });
+    const nombre = () => (modeFiltre ? TOTAL : checked().length);
+    const pluriel = (n) => n + ' élève' + (n > 1 ? 's' : '');
+
+    function esc(t) {
+        return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function refresh() {
+        const n = nombre();
+        const toutePage = rows().length > 0 && checked().length === rows().length;
+        bar.style.display = n > 0 ? 'flex' : 'none';
+        countEl.textContent = modeFiltre
+            ? pluriel(TOTAL) + ' du filtre sélectionnés'
+            : pluriel(n) + ' sélectionné' + (n > 1 ? 's' : '');
+        selAllLink.style.display = (!modeFiltre && toutePage && TOTAL > rows().length) ? 'inline' : 'none';
+        selAllLink.textContent = 'Sélectionner les ' + TOTAL + ' élèves du filtre';
+        if (checkAll) checkAll.checked = toutePage || modeFiltre;
+    }
+
+    rows().forEach(function (c) {
+        c.addEventListener('change', function () { modeFiltre = false; refresh(); });
+    });
+    checkAll.addEventListener('change', function () {
+        modeFiltre = false;
+        const etat = this.checked;
+        rows().forEach(function (c) { c.checked = etat; });
+        refresh();
+    });
+    selAllLink.addEventListener('click', function (e) { e.preventDefault(); modeFiltre = true; refresh(); });
+    document.getElementById('bulk-clear').addEventListener('click', function (e) {
+        e.preventDefault();
+        modeFiltre = false;
+        rows().forEach(function (c) { c.checked = false; });
+        refresh();
+    });
+
+    function formulaire() {
+        const classes = '<option value="">— Ne pas changer —</option>' + BULK.classes.map(function (c) {
+            return '<option value="' + c.id + '" data-nom="' + esc(c.nom) + '">' + esc(c.nom) + '</option>';
+        }).join('');
+        const series = '<option value="">—</option>' + BULK.series.map(function (s) {
+            return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+        }).join('');
+
+        return '<div style="text-align:left; font-size:0.9rem;">'
+            + '<p style="margin:0 0 12px;"><strong>' + pluriel(nombre()) + '</strong> seront modifiés.</p>'
+            + '<label style="font-weight:600;">Division</label>'
+            + '<select id="bk-div-action" class="swal2-select" style="width:100%; margin:4px 0 8px;">'
+            + '<option value="keep">Ne pas changer</option>'
+            + '<option value="set">Définir la division</option>'
+            + '<option value="clear">Retirer la division</option></select>'
+            + '<input id="bk-div" class="swal2-input" maxlength="12" placeholder="ex. M1, A, B" style="display:none; width:100%; margin:0 0 8px;">'
+            + '<label style="font-weight:600;">Classe</label>'
+            + '<select id="bk-classe" class="swal2-select" style="width:100%; margin:4px 0 8px;">' + classes + '</select>'
+            + '<div id="bk-serie-wrap" style="display:none;"><label style="font-weight:600;">Série</label>'
+            + '<select id="bk-serie" class="swal2-select" style="width:100%; margin:4px 0 8px;">' + series + '</select></div>'
+            + '</div>';
+    }
+
+    function ouvrir() {
+        if (nombre() === 0) return;
+
+        Swal.fire({
+            title: 'Modifier la sélection',
+            html: formulaire(),
+            showCancelButton: true,
+            confirmButtonText: 'Continuer',
+            cancelButtonText: 'Annuler',
+            focusConfirm: false,
+            didOpen: function () {
+                const act = document.getElementById('bk-div-action');
+                const cls = document.getElementById('bk-classe');
+                act.addEventListener('change', function () {
+                    document.getElementById('bk-div').style.display = act.value === 'set' ? 'block' : 'none';
+                });
+                cls.addEventListener('change', function () {
+                    const opt = cls.options[cls.selectedIndex];
+                    const avec = AVEC_SERIE.test((opt && opt.getAttribute('data-nom')) || '');
+                    document.getElementById('bk-serie-wrap').style.display = avec ? 'block' : 'none';
+                    if (!avec) document.getElementById('bk-serie').value = '';
+                });
+            },
+            preConfirm: function () {
+                const v = {
+                    divAction: document.getElementById('bk-div-action').value,
+                    division: document.getElementById('bk-div').value.trim(),
+                    classe: document.getElementById('bk-classe').value,
+                    serie: document.getElementById('bk-serie').value,
+                    classeNom: '',
+                };
+                if (v.divAction === 'set' && v.division === '') {
+                    Swal.showValidationMessage('Indique la division à appliquer.');
+                    return false;
+                }
+                if (v.divAction === 'keep' && v.classe === '') {
+                    Swal.showValidationMessage('Choisis au moins une modification.');
+                    return false;
+                }
+                const sel = document.getElementById('bk-classe');
+                v.classeNom = v.classe ? sel.options[sel.selectedIndex].text + (v.serie ? ' ' + v.serie : '') : '';
+                return v;
+            }
+        }).then(function (r) {
+            if (r.isConfirmed) confirmer(r.value);
+        });
+    }
+
+    function confirmer(v) {
+        const lignes = [];
+        if (v.divAction === 'set') lignes.push('Division : <strong>' + esc(v.division.toUpperCase()) + '</strong>');
+        if (v.divAction === 'clear') lignes.push('Division : <strong>aucune</strong>');
+        if (v.classe) lignes.push('Classe : <strong>' + esc(v.classeNom) + '</strong>');
+
+        Swal.fire({
+            icon: 'warning',
+            title: 'Confirmer la modification',
+            html: '<p><strong>' + pluriel(nombre()) + '</strong></p><p>' + lignes.join('<br>')
+                + '</p><p style="font-size:0.85rem;">Enregistré immédiatement pour cette école.</p>',
+            showCancelButton: true,
+            confirmButtonText: 'Appliquer',
+            cancelButtonText: 'Annuler'
+        }).then(function (r) {
+            if (r.isConfirmed) envoyer(v);
+        });
+    }
+
+    function envoyer(v) {
+        const f = document.createElement('form');
+        f.method = 'POST';
+        f.action = ACTION;
+        const add = function (nom, val) {
+            const i = document.createElement('input');
+            i.type = 'hidden';
+            i.name = nom;
+            i.value = (val === null || val === undefined) ? '' : val;
+            f.appendChild(i);
+        };
+        add('_token', CSRF);
+        add('ecole_id', ECOLE_ID);
+        add('division_action', v.divAction);
+        add('new_division', v.division);
+        add('new_classe_id', v.classe);
+        add('new_serie', v.serie);
+        if (modeFiltre) {
+            add('mode', 'filter');
+            add('expected_total', TOTAL);
+            Object.keys(BULK.filtres).forEach(function (k) { add(k, BULK.filtres[k]); });
+        } else {
+            add('mode', 'ids');
+            checked().forEach(function (c) { add('ids[]', c.value); });
+        }
+        document.body.appendChild(f);
+        f.submit();
+    }
+
+    document.getElementById('bulk-open').addEventListener('click', ouvrir);
+    refresh();
+})();
 </script>
 @endpush

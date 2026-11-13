@@ -147,6 +147,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])
             ->name('students.export.class.cards');
 
+        // MODIFICATION EN MASSE (division / classe des élèves d'une école)
+        Route::post('/students/bulk-update', [AdminStudentController::class, 'bulkUpdate'])
+            ->name('students.bulk.update');
+
         // GESTION ÉLÈVES
         Route::resource('eleves', AdminStudentController::class)
             ->parameters(['eleves' => 'eleve'])

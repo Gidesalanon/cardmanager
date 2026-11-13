@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Eleve;
 use App\Models\Classe;
 use App\Models\Ecole;
+use App\Models\Serie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -47,6 +48,78 @@ class AdminStudentController extends Controller
         $query = Eleve::with(['ecole', 'classe.serie'])->orderBy('nom');
 
         // Appliquer les filtres
+        $this->appliquerFiltres($query, $filters);
+
+        $perPage = in_array((int) $request->get('per_page'), [15, 30, 50], true)
+            ? (int) $request->get('per_page')
+            : 15;
+
+        $eleves = $query->paginate($perPage)->withQueryString();
+
+        // Divisions existantes (de l'école choisie, sinon de toutes) pour le filtre
+        $divisions = Eleve::query()
+            ->when(!empty($filters['ecole_id']), fn ($q) => $q->where('ecole_id', $filters['ecole_id']))
+            ->whereNotNull('division')
+            ->distinct()
+            ->orderBy('division')
+            ->pluck('division');
+
+        // Pour l'export des cartes : classes réellement présentes dans chaque école
+        $ecoleClasses = $this->classesParEcole();
+
+        // Données pour la modification en masse (fenêtre de la page)
+        $bulk = [
+            'classes' => $classes->map(fn ($c) => ['id' => $c->id, 'nom' => $c->nom])->values(),
+            'series'  => Serie::orderBy('nom')->pluck('nom')->values(),
+            'filtres' => [
+                'f_classe_id' => $filters['classe_id'] ?? '',
+                'f_nom'       => $filters['nom'] ?? '',
+                'f_sexe'      => $filters['sexe'] ?? '',
+                'f_division'  => $filters['division'] ?? '',
+            ],
+        ];
+
+        return view('admin.eleves.index', compact(
+            'eleves',
+            'classes',
+            'ecoles',
+            'filters',
+            'ecoleClasses',
+            'divisions',
+            'perPage',
+            'bulk'
+        ));
+    }
+
+    /** Même regroupement que la liste des classes de la page : 2nde/1ère/Tle par nom, sinon premier mot. */
+    private function niveauCle(?string $nom): string
+    {
+        $nom = (string) $nom;
+
+        return preg_match('/(2nde|1ère|Tle)/i', $nom) ? $nom : preg_replace('/\s+.*/', '', $nom);
+    }
+
+    /** Identifiants de toutes les lignes de classe d'un même niveau (toutes séries). */
+    private function classeIdsDuNiveau($classeId): array
+    {
+        $classe = Classe::find($classeId);
+
+        if (!$classe) {
+            return [(int) $classeId];
+        }
+
+        $cle = $this->niveauCle($classe->nom);
+
+        return Classe::get(['id', 'nom'])
+            ->filter(fn ($c) => $this->niveauCle($c->nom) === $cle)
+            ->pluck('id')
+            ->all();
+    }
+
+    /** Filtres de la liste des élèves (partagés par la liste et la modification en masse). */
+    private function appliquerFiltres($query, array $filters): void
+    {
+        // Appliquer les filtres
         if (!empty($filters['ecole_id'])) {
             $query->where('ecole_id', $filters['ecole_id']);
         }
@@ -83,58 +156,123 @@ class AdminStudentController extends Controller
                 $query->where('division', $division);
             }
         }
-
-        $perPage = in_array((int) $request->get('per_page'), [15, 30, 50], true)
-            ? (int) $request->get('per_page')
-            : 15;
-
-        $eleves = $query->paginate($perPage)->withQueryString();
-
-        // Divisions existantes (de l'école choisie, sinon de toutes) pour le filtre
-        $divisions = Eleve::query()
-            ->when(!empty($filters['ecole_id']), fn ($q) => $q->where('ecole_id', $filters['ecole_id']))
-            ->whereNotNull('division')
-            ->distinct()
-            ->orderBy('division')
-            ->pluck('division');
-
-        // Pour l'export des cartes : classes réellement présentes dans chaque école
-        $ecoleClasses = $this->classesParEcole();
-
-        return view('admin.eleves.index', compact(
-            'eleves',
-            'classes',
-            'ecoles',
-            'filters',
-            'ecoleClasses',
-            'divisions',
-            'perPage'
-        ));
     }
 
-    /** Même regroupement que la liste des classes de la page : 2nde/1ère/Tle par nom, sinon premier mot. */
-    private function niveauCle(?string $nom): string
+    /**
+     * Modification en masse (division et/ou classe) des élèves d'UNE école.
+     * Mode "ids" : élèves cochés ; mode "filter" : tous les élèves du filtre courant.
+     * Seuls la division, la classe et la série sont modifiables ici.
+     */
+    public function bulkUpdate(Request $request)
     {
-        $nom = (string) $nom;
+        $request->validate([
+            'ecole_id'        => 'required|exists:ecoles,id',
+            'mode'            => 'required|in:ids,filter',
+            'ids'             => 'required_if:mode,ids|array|max:1000',
+            'ids.*'           => 'integer',
+            'expected_total'  => 'nullable|integer|min:0',
+            'division_action' => 'required|in:keep,set,clear',
+            'new_division'    => 'nullable|string|max:12',
+            'new_classe_id'   => 'nullable|exists:classes,id',
+            'new_serie'       => 'nullable|string|exists:series,nom',
+            'f_classe_id'     => 'nullable|integer',
+            'f_nom'           => 'nullable|string|max:100',
+            'f_sexe'          => 'nullable|in:M,F',
+            'f_division'      => 'nullable|string|max:12',
+        ]);
 
-        return preg_match('/(2nde|1ère|Tle)/i', $nom) ? $nom : preg_replace('/\s+.*/', '', $nom);
-    }
+        // --- Ce qui doit changer ---
+        $changes = [];
 
-    /** Identifiants de toutes les lignes de classe d'un même niveau (toutes séries). */
-    private function classeIdsDuNiveau($classeId): array
-    {
-        $classe = Classe::find($classeId);
+        if ($request->division_action === 'set') {
+            $division = Eleve::normaliserDivision($request->new_division);
 
-        if (!$classe) {
-            return [(int) $classeId];
+            if ($division === null) {
+                return back()->with('error', 'Indiquez la division à appliquer.');
+            }
+
+            $changes['division'] = $division;
+        } elseif ($request->division_action === 'clear') {
+            $changes['division'] = null;
         }
 
-        $cle = $this->niveauCle($classe->nom);
+        if ($request->filled('new_classe_id')) {
+            $changes['classe_id'] = Classe::resolveId($request->new_classe_id, $request->new_serie);
+        }
 
-        return Classe::get(['id', 'nom'])
-            ->filter(fn ($c) => $this->niveauCle($c->nom) === $cle)
-            ->pluck('id')
-            ->all();
+        if (empty($changes)) {
+            return back()->with('error', 'Aucune modification demandée.');
+        }
+
+        // --- Quels élèves (toujours limités à l'école choisie) ---
+        $ecoleId = (int) $request->ecole_id;
+        $query   = Eleve::query()->where('ecole_id', $ecoleId);
+        $attendu = null;
+
+        if ($request->mode === 'ids') {
+            $ids     = array_values(array_unique(array_map('intval', $request->ids)));
+            $attendu = count($ids);
+            $query->whereIn('id', $ids);
+        } else {
+            $this->appliquerFiltres($query, [
+                'ecole_id'  => $ecoleId,
+                'classe_id' => $request->f_classe_id,
+                'nom'       => $request->f_nom,
+                'sexe'      => $request->f_sexe,
+                'division'  => $request->f_division,
+            ]);
+
+            if ($request->filled('expected_total')) {
+                $attendu = (int) $request->expected_total;
+            }
+        }
+
+        $eleves = $query->get(['id', 'classe_id', 'division']);
+        $total  = $eleves->count();
+
+        if ($total === 0) {
+            return back()->with('error', 'Aucun élève concerné par cette modification.');
+        }
+
+        if ($total > 1000) {
+            return back()->with('error', 'Trop d\'élèves en une fois (maximum 1000). Affinez le filtre.');
+        }
+
+        if ($attendu !== null && $attendu !== $total) {
+            return back()->with('error', 'La sélection ne correspond plus aux élèves de cette école. Rechargez la page et recommencez.');
+        }
+
+        // --- Application : tout ou rien, avec trace des anciennes valeurs ---
+        $avant = $eleves
+            ->map(fn ($e) => $e->id . ':' . $e->classe_id . ':' . ($e->division ?? ''))
+            ->implode(',');
+
+        DB::transaction(function () use ($eleves, $changes) {
+            Eleve::whereIn('id', $eleves->pluck('id')->all())
+                ->update($changes + ['updated_at' => now()]);
+        });
+
+        Log::info('Modification en masse des élèves', [
+            'admin_id' => auth()->id(),
+            'ecole_id' => $ecoleId,
+            'mode'     => $request->mode,
+            'nombre'   => $total,
+            'changes'  => $changes,
+            'avant'    => $avant, // format : id:classe_id:division
+        ]);
+
+        $resume = [];
+
+        if (array_key_exists('division', $changes)) {
+            $resume[] = 'division : ' . ($changes['division'] ?? 'aucune');
+        }
+
+        if (isset($changes['classe_id'])) {
+            $nouvelle = Classe::with('serie')->find($changes['classe_id']);
+            $resume[] = 'classe : ' . ($nouvelle ? $this->classeLabel($nouvelle) : $changes['classe_id']);
+        }
+
+        return back()->with('success', $total . ' élève' . ($total > 1 ? 's' : '') . ' mis à jour (' . implode(', ', $resume) . ').');
     }
 
     public function create()
