@@ -108,6 +108,13 @@
                                 </select>
                             </div>
 
+                            {{-- DIVISION (facultatif : M1, M2, A, B...) --}}
+                            <div class="form-group">
+                                <label class="form-label">Division <span style="font-weight:normal;">(facultatif)</span></label>
+                                <input type="text" name="division" class="form-input" maxlength="12"
+                                       placeholder="ex. M1, A, B" value="{{ old('division') }}">
+                            </div>
+
                             {{-- MATRICULE --}}
                             <div class="form-group">
                                 <label class="form-label">Matricule</label>

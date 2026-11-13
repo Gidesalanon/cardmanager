@@ -75,6 +75,9 @@ $premierDirecteur = $premiereEcole->directeur;
     if (afficherSerie($nomClasse) && $eleve->classe->serie) {
         $classeAffichee .= ' ' . $eleve->classe->serie->nom;
     }
+    if (!empty($eleve->division)) {
+        $classeAffichee .= ' ' . $eleve->division;
+    }
 
 // Numéro de table — 9pt fixe, letter-spacing adaptatif pour tenir dans la case
 $numTable = $eleve->numero_table ?? '';

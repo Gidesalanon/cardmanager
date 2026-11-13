@@ -119,6 +119,8 @@ class StudentController extends Controller
 
     $validated = $request->validate([
         'classe_id'           => 'required|exists:classes,id',
+        'serie'               => 'nullable|string|exists:series,nom',
+        'division'            => 'nullable|string|max:12',
         'nom'                 => 'required|string|max:255',
         'prenom'              => 'required|string|max:255',
         'sexe'                => 'required|in:M,F',
@@ -145,7 +147,8 @@ class StudentController extends Controller
 
     Eleve::create([
         'ecole_id'            => $ecole->id,
-        'classe_id'           => $validated['classe_id'],
+        'classe_id'           => Classe::resolveId($validated['classe_id'], $validated['serie'] ?? null),
+        'division'            => $validated['division'] ?? null,
         'nom'                 => $validated['nom'],
         'prenom'              => $validated['prenom'],
         'sexe'                => $validated['sexe'],
@@ -173,6 +176,7 @@ public function update(Request $request, Eleve $eleve)
         'telephone_tuteur'    => 'required|string|max:20',
         'photo'               => 'nullable|image|max:2048',
         'matricule_edumaster' => 'nullable|string|unique:eleves,matricule_edumaster,' . $eleve->id,
+        'division'            => 'nullable|string|max:12',
     ]);
 
     if ($request->hasFile('photo')) {

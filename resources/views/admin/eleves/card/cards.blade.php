@@ -43,6 +43,9 @@ $classeAffichee = $nomClasse;
 if (afficherSerie($nomClasse) && $eleve->classe->serie) {
     $classeAffichee .= ' ' . $eleve->classe->serie->nom;
 }
+if (!empty($eleve->division)) {
+    $classeAffichee .= ' ' . $eleve->division;
+}
 
 $nomPropre    = cleanText($eleve->nom ?? '');
 $prenomPropre = cleanText($eleve->prenom ?? '');

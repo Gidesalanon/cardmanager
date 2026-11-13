@@ -270,6 +270,10 @@
                         @endforeach
                     </select>
                 </div>
+                <div style="flex:1; min-width:160px;">
+                    <label class="form-label">Division <span style="color:#8a8a8a;">(facultatif)</span></label>
+                    <input type="text" x-model="division" maxlength="12" placeholder="ex. M1, A, B" class="form-input">
+                </div>
             </div>
 
             <div style="overflow-x:auto;">
@@ -418,6 +422,7 @@ function studentImport() {
         students: [],
         classe_id: '',
         serie: '',
+        division: '',
         showSerie: false,
         loading: false,
         progress: 0,
@@ -498,7 +503,7 @@ function studentImport() {
                 const r = await fetch("{{ route('school.students.import.storeAll') }}", {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ classe_id: this.classe_id, serie: this.serie, students: this.students })
+                    body: JSON.stringify({ classe_id: this.classe_id, serie: this.serie, division: this.division, students: this.students })
                 });
                 const d = await r.json();
                 if (r.ok && d.success) {

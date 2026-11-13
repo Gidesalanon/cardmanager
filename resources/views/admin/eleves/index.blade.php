@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         addOption('', '-- Classe --');
         classes.forEach(function (c) {
-            addOption(c.id, c.label + ' — ' + c.total + (c.total > 1 ? ' élèves' : ' élève'));
+            addOption(c.value, c.label + ' — ' + c.total + (c.total > 1 ? ' élèves' : ' élève'));
         });
         if (classes.length > 1) {
             addOption('all', 'Toutes les classes (ZIP)');

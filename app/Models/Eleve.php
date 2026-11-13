@@ -19,6 +19,7 @@ class Eleve extends Model
         'matricule_edumaster',
         'numero_table',
         'classe_id',
+        'division',
         'ecole_id',
     ];
 
@@ -34,6 +35,36 @@ class Eleve extends Model
     public function ecole()
     {
         return $this->belongsTo(Ecole::class);
+    }
+
+    /**
+     * Division / groupe facultatif (M1, M2, A, B...) : espaces nettoyés, majuscules,
+     * null si vide. Une seule règle pour les formulaires, les imports et les exports.
+     */
+    public static function normaliserDivision($value): ?string
+    {
+        if (is_int($value) || is_float($value)) {
+            $value = (string) $value;
+        }
+
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $clean = preg_replace('/\s+/u', ' ', $value);
+
+        if ($clean === null) { // texte non UTF-8 : on ignore la valeur
+            return null;
+        }
+
+        $clean = trim($clean);
+
+        return $clean === '' ? null : mb_strtoupper($clean);
+    }
+
+    public function setDivisionAttribute($value): void
+    {
+        $this->attributes['division'] = self::normaliserDivision($value);
     }
 
     public function scopeActiveYear($query)

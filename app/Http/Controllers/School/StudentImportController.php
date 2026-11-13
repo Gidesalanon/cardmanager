@@ -301,6 +301,7 @@ class StudentImportController extends Controller
     {
         $request->validate([
             'classe_id' => 'required|exists:classes,id',
+            'division'  => 'nullable|string|max:12',
             'students'  => 'required|array|min:1',
         ]);
 
@@ -405,6 +406,7 @@ class StudentImportController extends Controller
                         'photo'               => $photoPath,
                         'matricule_edumaster' => $s['matricule'] ?? null,
                         'numero_table'        => $s['numero_table'] ?? null,
+                        'division'            => $request->division,
                         'qr_code'             => $qrCodePath,
                     ]);
 

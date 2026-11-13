@@ -70,7 +70,7 @@ body{ margin:0; font-family: Arial, sans-serif; }
         <b>Prénom:</b> {{ $eleve->prenom }}<br>
         Né(e) le {{ $eleve->date_naissance?->format('d/m/Y') }}<br>
         à {{ $eleve->lieu_naissance }}<br>
-        Classe: {{ $eleve->classe->nom }}<br>
+        Classe: {{ $eleve->classe->nom }}@if(!empty($eleve->division)) {{ $eleve->division }}@endif<br>
         Tel parent: {{ $eleve->telephone_tuteur }}
     </div>
 

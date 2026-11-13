@@ -14,6 +14,7 @@ use Endroid\QrCode\Writer\PngWriter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class AdminStudentController extends Controller
 {
@@ -89,6 +90,8 @@ class AdminStudentController extends Controller
     $validated = $request->validate([
         'ecole_id'            => 'required|exists:ecoles,id',
         'classe_id'           => 'required|exists:classes,id',
+        'serie'               => 'nullable|string|exists:series,nom',
+        'division'            => 'nullable|string|max:12',
         'nom'                 => 'required|string|max:255',
         'prenom'              => 'required|string|max:255',
         'sexe'                => 'required|in:M,F',
@@ -116,7 +119,8 @@ class AdminStudentController extends Controller
 
     Eleve::create([
         'ecole_id'            => $validated['ecole_id'],
-        'classe_id'           => $validated['classe_id'],
+        'classe_id'           => Classe::resolveId($validated['classe_id'], $validated['serie'] ?? null),
+        'division'            => $validated['division'] ?? null,
         'nom'                 => $validated['nom'],
         'prenom'              => $validated['prenom'],
         'sexe'                => $validated['sexe'],
@@ -138,6 +142,8 @@ public function update(Request $request, Eleve $eleve)
     $validated = $request->validate([
         'ecole_id'            => 'required|exists:ecoles,id',
         'classe_id'           => 'required|exists:classes,id',
+        'serie'               => 'nullable|string|exists:series,nom',
+        'division'            => 'nullable|string|max:12',
         'nom'                 => 'required|string|max:255',
         'prenom'              => 'required|string|max:255',
         'sexe'                => 'required|in:M,F',
@@ -154,6 +160,9 @@ public function update(Request $request, Eleve $eleve)
         }
         $validated['photo'] = $request->file('photo')->store('eleves/photos', 'public');
     }
+
+    $validated['classe_id'] = Classe::resolveId($validated['classe_id'], $validated['serie'] ?? null);
+    unset($validated['serie']);
 
     $eleve->update($validated);
 
@@ -304,10 +313,11 @@ public function exportEcoleCardsPdf(Request $request)
 
     /**
      * Nom de fichier : ecole_golo_djigbe_classe_4eme.pdf
+     * ou, avec une division : ecole_golo_djigbe_classe_5eme_m1.pdf
      */
-    private function cardsFileName(Ecole $ecole, Classe $classe): string
+    private function cardsFileName(Ecole $ecole, Classe $classe, ?string $division = null): string
     {
-        $classeSlug = Str::slug($this->classeLabel($classe), '_');
+        $classeSlug = Str::slug(trim($this->classeLabel($classe) . ' ' . ($division ?? '')), '_');
 
         // 6e, 5e, 4e, 3e => 6eme, 5eme, 4eme, 3eme
         $classeSlug = preg_replace('/^(\d)e(?=_|$)/', '$1eme', $classeSlug);
@@ -316,14 +326,20 @@ public function exportEcoleCardsPdf(Request $request)
     }
 
     /**
-     * Pour chaque école : la liste des classes qui ont des élèves, avec l'effectif.
-     * Format : [ecole_id => [['id' => .., 'label' => '4e', 'total' => 32], ...]]
+     * Pour chaque école : la liste des classes (et divisions) qui ont des élèves, avec l'effectif.
+     * Format : [ecole_id => [['value' => '36|M1', 'label' => '5e M1', 'total' => 32], ...]]
+     * value = "<id de classe>|<division>" ; division vide = élèves sans division.
      */
     private function classesParEcole()
     {
+        // Tolérant : la page Élèves reste utilisable même si la migration "division" n'est pas encore passée
+        $colonnes = Schema::hasColumn('eleves', 'division')
+            ? ['ecole_id', 'classe_id', 'division']
+            : ['ecole_id', 'classe_id'];
+
         $counts = DB::table('eleves')
-            ->select('ecole_id', 'classe_id', DB::raw('COUNT(*) as total'))
-            ->groupBy('ecole_id', 'classe_id')
+            ->select(array_merge($colonnes, [DB::raw('COUNT(*) as total')]))
+            ->groupBy($colonnes)
             ->get();
 
         $classesById = Classe::with('serie')
@@ -336,12 +352,17 @@ public function exportEcoleCardsPdf(Request $request)
             ->map(function ($rows) use ($classesById) {
                 return $rows
                     ->filter(fn ($r) => $classesById->has($r->classe_id))
-                    ->groupBy(fn ($r) => $this->classeLabel($classesById[$r->classe_id]))
-                    ->map(fn ($group, $label) => [
-                        'id'    => $group->first()->classe_id,
-                        'label' => $label,
-                        'total' => $group->sum('total'),
-                    ])
+                    ->groupBy(fn ($r) => $this->classeLabel($classesById[$r->classe_id]) . '|' . ($r->division ?? ''))
+                    ->map(function ($group) use ($classesById) {
+                        $first    = $group->first();
+                        $division = $first->division ?? null;
+
+                        return [
+                            'value' => $first->classe_id . '|' . ($division ?? ''),
+                            'label' => $this->classeLabel($classesById[$first->classe_id]) . ($division ? ' ' . $division : ''),
+                            'total' => $group->sum('total'),
+                        ];
+                    })
                     ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
                     ->values();
             });
@@ -356,8 +377,8 @@ public function exportEcoleCardsPdf(Request $request)
     }
 
     /**
-     * Cartes d'UNE classe d'UNE école (classe_id = id), ou de toutes les classes
-     * de l'école dans un ZIP (classe_id = "all"), un PDF par classe.
+     * Cartes d'UNE classe (et division) d'UNE école (classe_id = "<id>|<division>"),
+     * ou de toutes les classes de l'école dans un ZIP (classe_id = "all"), un PDF par classe.
      */
     public function exportClassCardsPdf(Request $request)
     {
@@ -366,21 +387,30 @@ public function exportEcoleCardsPdf(Request $request)
             'classe_id' => 'required',
         ]);
 
-        if ($request->classe_id !== 'all') {
-            $request->validate(['classe_id' => 'exists:classes,id']);
-        }
-
         $ecole = Ecole::with('directeur')->findOrFail($request->ecole_id);
 
         if ($request->classe_id === 'all') {
             return $this->exportAllClassesZip($ecole);
         }
 
-        $classe = Classe::with('serie')->findOrFail($request->classe_id);
+        // Valeur reçue : "<id de classe>|<division>" (division vide = élèves sans division)
+        [$classeId, $division] = array_pad(explode('|', (string) $request->classe_id, 2), 2, '');
+        $division = Eleve::normaliserDivision($division);
+
+        validator(['classe_id' => $classeId], [
+            'classe_id' => 'required|integer|exists:classes,id',
+        ])->validate();
+
+        $classe = Classe::with('serie')->findOrFail($classeId);
 
         $eleves = Eleve::with(['ecole.directeur', 'classe.serie'])
             ->where('ecole_id', $ecole->id)
             ->whereIn('classe_id', $this->classeGroupIds($classe))
+            ->when(
+                $division === null,
+                fn ($q) => $q->whereNull('division'),
+                fn ($q) => $q->where('division', $division)
+            )
             ->orderBy('nom')
             ->orderBy('prenom')
             ->get();
@@ -388,11 +418,11 @@ public function exportEcoleCardsPdf(Request $request)
         if ($eleves->isEmpty()) {
             return redirect()
                 ->route('admin.students.index')
-                ->with('error', 'Aucun élève en ' . $this->classeLabel($classe) . ' pour cette école.');
+                ->with('error', 'Aucun élève en ' . trim($this->classeLabel($classe) . ' ' . ($division ?? '')) . ' pour cette école.');
         }
 
         return $this->buildCardsPdf($eleves)
-            ->download($this->cardsFileName($ecole, $classe));
+            ->download($this->cardsFileName($ecole, $classe, $division));
     }
 
     private function exportAllClassesZip(Ecole $ecole)
@@ -409,7 +439,7 @@ public function exportEcoleCardsPdf(Request $request)
             ->orderBy('prenom')
             ->get()
             ->filter(fn ($e) => $e->classe)
-            ->groupBy(fn ($e) => $this->classeLabel($e->classe));
+            ->groupBy(fn ($e) => $this->classeLabel($e->classe) . '|' . ($e->division ?? ''));
 
         if ($groupes->isEmpty()) {
             return redirect()
@@ -439,7 +469,7 @@ public function exportEcoleCardsPdf(Request $request)
 
         try {
             foreach ($groupes as $label => $eleves) {
-                $classeEnCours = $label;
+                $classeEnCours = trim(str_replace('|', ' ', $label));
 
                 $tmp = $tmpDir . '/pdf_' . uniqid() . '.pdf';
                 $tmpFiles[] = $tmp;
@@ -449,7 +479,7 @@ public function exportEcoleCardsPdf(Request $request)
                 unset($pdf);
                 gc_collect_cycles();
 
-                $zip->addFile($tmp, $this->cardsFileName($ecole, $eleves->first()->classe));
+                $zip->addFile($tmp, $this->cardsFileName($ecole, $eleves->first()->classe, $eleves->first()->division));
             }
 
             // ZipArchive lit les fichiers au moment de close() : ne rien supprimer avant
