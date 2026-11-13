@@ -67,6 +67,31 @@ class Eleve extends Model
         $this->attributes['division'] = self::normaliserDivision($value);
     }
 
+    /**
+     * Classe lisible : "5e M1", "2nde C M1", "CM2"...
+     * La série n'est ajoutée que pour 2nde / 1ère / Tle (comme sur les cartes).
+     */
+    public function getClasseLibelleAttribute(): string
+    {
+        $classe = $this->classe;
+
+        if (!$classe) {
+            return '—';
+        }
+
+        $libelle = $classe->nom;
+
+        if ($classe->serie && preg_match('/^(2nde|1ère|Tle|Terminale)$/i', trim($classe->nom))) {
+            $libelle .= ' ' . $classe->serie->nom;
+        }
+
+        if (!empty($this->division)) {
+            $libelle .= ' ' . $this->division;
+        }
+
+        return $libelle;
+    }
+
     public function scopeActiveYear($query)
     {
         return $query->whereHas('ecole', function ($q) {

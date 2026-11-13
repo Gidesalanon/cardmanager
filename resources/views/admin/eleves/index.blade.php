@@ -23,6 +23,8 @@
     align-items: end;
 }
 .filter-bar .form-label { font-size: 0.78rem; margin-bottom: 5px; font-weight: 600; }
+.filter-bar .filter-extra { grid-column: 1 / -1; display: flex; gap: 14px; flex-wrap: wrap; align-items: end; }
+.filter-bar .filter-extra > div { min-width: 180px; }
 
 .active-filters {
     padding: 10px 20px;
@@ -152,7 +154,7 @@
         <div>
             <label class="form-label">Nom de l'élève</label>
             <input type="text" name="nom" class="form-input" style="width:100%;"
-                   placeholder="Rechercher par nom..." value="{{ $filters['nom'] ?? '' }}">
+                   placeholder="Nom, prénom ou matricule..." value="{{ $filters['nom'] ?? '' }}">
         </div>
         <div>
             <label class="form-label">Sexe</label>
@@ -170,6 +172,27 @@
                 <i class="fa-solid fa-rotate-right"></i>
             </a>
         </div>
+
+        <div class="filter-extra">
+            <div>
+                <label class="form-label">Division</label>
+                <select name="division" class="form-input" style="width:100%;">
+                    <option value="">Toutes</option>
+                    <option value="__none__" {{ ($filters['division'] ?? '') === '__none__' ? 'selected' : '' }}>Sans division</option>
+                    @foreach($divisions as $div)
+                        <option value="{{ $div }}" {{ ($filters['division'] ?? '') === $div ? 'selected' : '' }}>{{ $div }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Élèves par page</label>
+                <select name="per_page" class="form-input" style="width:100%;">
+                    @foreach([15, 30, 50] as $n)
+                        <option value="{{ $n }}" {{ $perPage == $n ? 'selected' : '' }}>{{ $n }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
     </form>
 
     {{-- Filtres actifs --}}
@@ -179,6 +202,7 @@
         @if($filters['classe_id']) <strong>Classe :</strong> {{ $classes->find($filters['classe_id'])->nom ?? '' }} &nbsp;|&nbsp; @endif
         @if($filters['nom']) <strong>Nom :</strong> "{{ $filters['nom'] }}" &nbsp;|&nbsp; @endif
         @if($filters['sexe']) <strong>Sexe :</strong> {{ $filters['sexe'] == 'M' ? 'Masculin' : 'Féminin' }} &nbsp;|&nbsp; @endif
+        @if($filters['division']) <strong>Division :</strong> {{ $filters['division'] === '__none__' ? 'Sans division' : $filters['division'] }} &nbsp;|&nbsp; @endif
         <strong>{{ $eleves->total() }} résultat{{ $eleves->total() > 1 ? 's' : '' }}</strong>
     </div>
     @endif
@@ -192,6 +216,7 @@
                     <th>N° Table</th>
                     <th>Nom</th>
                     <th>Prénom</th>
+                    <th>Classe</th>
                     <th>Sexe</th>
                     <th>Naissance</th>
                     <th>Téléphone</th>
@@ -224,6 +249,7 @@
                     </td>
                     <td><strong>{{ $eleve->nom }}</strong></td>
                     <td>{{ $eleve->prenom }}</td>
+                    <td>{{ $eleve->classe_libelle }}</td>
                     <td>
                         <span class="badge {{ $eleve->sexe == 'F' ? 'badge-orange' : 'badge-blue' }}">
                             {{ $eleve->sexe == 'F' ? 'F' : 'M' }}
@@ -259,7 +285,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" style="text-align:center; padding:2rem; color:var(--text-secondary);">
+                    <td colspan="10" style="text-align:center; padding:2rem; color:var(--text-secondary);">
                         Aucun élève trouvé.
                     </td>
                 </tr>

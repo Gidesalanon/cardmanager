@@ -40,10 +40,11 @@ class AdminStudentController extends Controller
             'classe_id' => $request->get('classe_id'),
             'nom' => $request->get('nom'),
             'sexe' => $request->get('sexe'),
+            'division' => $request->get('division'),
         ];
 
         // Admin : voit tous les élèves de toutes les écoles
-        $query = Eleve::with(['ecole', 'classe'])->orderBy('nom');
+        $query = Eleve::with(['ecole', 'classe.serie'])->orderBy('nom');
 
         // Appliquer les filtres
         if (!empty($filters['ecole_id'])) {
@@ -51,18 +52,51 @@ class AdminStudentController extends Controller
         }
 
         if (!empty($filters['classe_id'])) {
-            $query->where('classe_id', $filters['classe_id']);
+            // Toutes les lignes de classe du même niveau (toutes séries), pas seulement la première
+            $query->whereIn('classe_id', $this->classeIdsDuNiveau($filters['classe_id']));
         }
 
         if (!empty($filters['nom'])) {
-            $query->where('name', 'LIKE', '%' . $filters['nom'] . '%');
+            // Chaque mot doit se retrouver dans le nom, le prénom ou le matricule
+            // (permet de taper « AMOU Zabulon » ou un matricule)
+            $termes = preg_split('/\s+/', trim($filters['nom']), -1, PREG_SPLIT_NO_EMPTY);
+
+            foreach ($termes as $terme) {
+                $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $terme) . '%';
+
+                $query->where(function ($q) use ($like) {
+                    $q->where('nom', 'LIKE', $like)
+                      ->orWhere('prenom', 'LIKE', $like)
+                      ->orWhere('matricule_edumaster', 'LIKE', $like);
+                });
+            }
         }
 
         if (!empty($filters['sexe'])) {
             $query->where('sexe', $filters['sexe']);
         }
 
-        $eleves = $query->paginate(15)->withQueryString();
+        if (!empty($filters['division'])) {
+            if ($filters['division'] === '__none__') {
+                $query->whereNull('division');
+            } elseif (($division = Eleve::normaliserDivision($filters['division'])) !== null) {
+                $query->where('division', $division);
+            }
+        }
+
+        $perPage = in_array((int) $request->get('per_page'), [15, 30, 50], true)
+            ? (int) $request->get('per_page')
+            : 15;
+
+        $eleves = $query->paginate($perPage)->withQueryString();
+
+        // Divisions existantes (de l'école choisie, sinon de toutes) pour le filtre
+        $divisions = Eleve::query()
+            ->when(!empty($filters['ecole_id']), fn ($q) => $q->where('ecole_id', $filters['ecole_id']))
+            ->whereNotNull('division')
+            ->distinct()
+            ->orderBy('division')
+            ->pluck('division');
 
         // Pour l'export des cartes : classes réellement présentes dans chaque école
         $ecoleClasses = $this->classesParEcole();
@@ -72,8 +106,35 @@ class AdminStudentController extends Controller
             'classes',
             'ecoles',
             'filters',
-            'ecoleClasses'
+            'ecoleClasses',
+            'divisions',
+            'perPage'
         ));
+    }
+
+    /** Même regroupement que la liste des classes de la page : 2nde/1ère/Tle par nom, sinon premier mot. */
+    private function niveauCle(?string $nom): string
+    {
+        $nom = (string) $nom;
+
+        return preg_match('/(2nde|1ère|Tle)/i', $nom) ? $nom : preg_replace('/\s+.*/', '', $nom);
+    }
+
+    /** Identifiants de toutes les lignes de classe d'un même niveau (toutes séries). */
+    private function classeIdsDuNiveau($classeId): array
+    {
+        $classe = Classe::find($classeId);
+
+        if (!$classe) {
+            return [(int) $classeId];
+        }
+
+        $cle = $this->niveauCle($classe->nom);
+
+        return Classe::get(['id', 'nom'])
+            ->filter(fn ($c) => $this->niveauCle($c->nom) === $cle)
+            ->pluck('id')
+            ->all();
     }
 
     public function create()
