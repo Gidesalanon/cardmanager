@@ -513,10 +513,12 @@ public function exportEcoleCardsPdf(Request $request)
     /**
      * Nom de fichier : ecole_golo_djigbe_classe_4eme.pdf
      * ou, avec une division : ecole_golo_djigbe_classe_5eme_m1.pdf
+     * ou, élèves sans division d'un niveau qui en a : ecole_golo_djigbe_classe_5eme_sans_division.pdf
      */
-    private function cardsFileName(Ecole $ecole, Classe $classe, ?string $division = null): string
+    private function cardsFileName(Ecole $ecole, Classe $classe, ?string $division = null, bool $sansDivision = false): string
     {
-        $classeSlug = Str::slug(trim($this->classeLabel($classe) . ' ' . ($division ?? '')), '_');
+        $suffixe    = $division ?? ($sansDivision ? 'sans division' : '');
+        $classeSlug = Str::slug(trim($this->classeLabel($classe) . ' ' . $suffixe), '_');
 
         // 6e, 5e, 4e, 3e => 6eme, 5eme, 4eme, 3eme
         $classeSlug = preg_replace('/^(\d)e(?=_|$)/', '$1eme', $classeSlug);
@@ -525,9 +527,14 @@ public function exportEcoleCardsPdf(Request $request)
     }
 
     /**
-     * Pour chaque école : la liste des classes (et divisions) qui ont des élèves, avec l'effectif.
-     * Format : [ecole_id => [['value' => '36|M1', 'label' => '5e M1', 'total' => 32], ...]]
-     * value = "<id de classe>|<division>" ; division vide = élèves sans division.
+     * Pour chaque école : les classes qui ont des élèves, regroupées par niveau.
+     * Format : [ecole_id => [['label' => '5e', 'total' => 135, 'options' => [...]], ...]]
+     *
+     * Un niveau sans division n'a qu'une option : "36|" (tous ses élèves).
+     * Un niveau avec divisions en a plusieurs :
+     *   "36|*"  toute la classe (toutes divisions confondues)
+     *   "36|M2" une division
+     *   "36|!"  les élèves sans division (seulement s'il y en a)
      */
     private function classesParEcole()
     {
@@ -551,16 +558,48 @@ public function exportEcoleCardsPdf(Request $request)
             ->map(function ($rows) use ($classesById) {
                 return $rows
                     ->filter(fn ($r) => $classesById->has($r->classe_id))
-                    ->groupBy(fn ($r) => $this->classeLabel($classesById[$r->classe_id]) . '|' . ($r->division ?? ''))
-                    ->map(function ($group) use ($classesById) {
-                        $first    = $group->first();
-                        $division = $first->division ?? null;
+                    ->groupBy(fn ($r) => $this->classeLabel($classesById[$r->classe_id]))
+                    ->map(function ($niveau, $label) {
+                        $id    = $niveau->first()->classe_id;
+                        $total = $niveau->sum('total');
 
-                        return [
-                            'value' => $first->classe_id . '|' . ($division ?? ''),
-                            'label' => $this->classeLabel($classesById[$first->classe_id]) . ($division ? ' ' . $division : ''),
-                            'total' => $group->sum('total'),
-                        ];
+                        $divisions = $niveau
+                            ->filter(fn ($r) => !empty($r->division ?? null))
+                            ->groupBy(fn ($r) => $r->division)
+                            ->map(fn ($g) => $g->sum('total'))
+                            ->sortKeys(SORT_NATURAL);
+
+                        // Niveau sans division : une seule entrée, comme avant
+                        if ($divisions->isEmpty()) {
+                            return [
+                                'label'   => $label,
+                                'total'   => $total,
+                                'options' => [['value' => $id . '|', 'label' => $label, 'total' => $total]],
+                            ];
+                        }
+
+                        $options = [[
+                            'value'     => $id . '|*',
+                            'label'     => $label . ' — toute la classe',
+                            'total'     => $total,
+                            'aggregate' => true,
+                        ]];
+
+                        foreach ($divisions as $division => $effectif) {
+                            $options[] = [
+                                'value' => $id . '|' . $division,
+                                'label' => $label . ' ' . $division,
+                                'total' => $effectif,
+                            ];
+                        }
+
+                        $sans = $total - $divisions->sum();
+
+                        if ($sans > 0) {
+                            $options[] = ['value' => $id . '|!', 'label' => $label . ' sans division', 'total' => $sans];
+                        }
+
+                        return ['label' => $label, 'total' => $total, 'options' => $options];
                     })
                     ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
                     ->values();
@@ -592,9 +631,12 @@ public function exportEcoleCardsPdf(Request $request)
             return $this->exportAllClassesZip($ecole);
         }
 
-        // Valeur reçue : "<id de classe>|<division>" (division vide = élèves sans division)
-        [$classeId, $division] = array_pad(explode('|', (string) $request->classe_id, 2), 2, '');
-        $division = Eleve::normaliserDivision($division);
+        // Valeur reçue : "<id de classe>|<reste>" avec reste = "*" (toute la classe), "!" (sans division),
+        // "<division>", ou vide (élèves sans division d'un niveau qui n'a pas de divisions)
+        [$classeId, $reste] = array_pad(explode('|', (string) $request->classe_id, 2), 2, '');
+        $toute    = $reste === '*';
+        $sans     = $reste === '!';
+        $division = ($toute || $sans) ? null : Eleve::normaliserDivision($reste);
 
         validator(['classe_id' => $classeId], [
             'classe_id' => 'required|integer|exists:classes,id',
@@ -606,9 +648,12 @@ public function exportEcoleCardsPdf(Request $request)
             ->where('ecole_id', $ecole->id)
             ->whereIn('classe_id', $this->classeGroupIds($classe))
             ->when(
-                $division === null,
-                fn ($q) => $q->whereNull('division'),
-                fn ($q) => $q->where('division', $division)
+                !$toute,
+                fn ($q) => $q->when(
+                    $division === null,
+                    fn ($q2) => $q2->whereNull('division'),
+                    fn ($q2) => $q2->where('division', $division)
+                )
             )
             ->orderBy('nom')
             ->orderBy('prenom')
@@ -617,11 +662,11 @@ public function exportEcoleCardsPdf(Request $request)
         if ($eleves->isEmpty()) {
             return redirect()
                 ->route('admin.students.index')
-                ->with('error', 'Aucun élève en ' . trim($this->classeLabel($classe) . ' ' . ($division ?? '')) . ' pour cette école.');
+                ->with('error', 'Aucun élève en ' . trim($this->classeLabel($classe) . ' ' . ($division ?? ($sans ? 'sans division' : ''))) . ' pour cette école.');
         }
 
         return $this->buildCardsPdf($eleves)
-            ->download($this->cardsFileName($ecole, $classe, $division));
+            ->download($this->cardsFileName($ecole, $classe, $division, $sans));
     }
 
     private function exportAllClassesZip(Ecole $ecole)
@@ -645,6 +690,15 @@ public function exportEcoleCardsPdf(Request $request)
                 ->route('admin.students.index')
                 ->with('error', 'Aucun élève trouvé pour cette école.');
         }
+
+        // Niveaux (libellés) qui ont au moins une division : leurs élèves sans division
+        // sont nommés "..._sans_division.pdf" pour ne pas passer pour la classe entière
+        $niveauxAvecDivision = $groupes->keys()
+            ->filter(fn ($k) => !str_ends_with($k, '|'))
+            ->map(fn ($k) => explode('|', $k, 2)[0])
+            ->unique()
+            ->values()
+            ->all();
 
         @set_time_limit(300);
         @ini_set('memory_limit', '512M');
@@ -678,7 +732,11 @@ public function exportEcoleCardsPdf(Request $request)
                 unset($pdf);
                 gc_collect_cycles();
 
-                $zip->addFile($tmp, $this->cardsFileName($ecole, $eleves->first()->classe, $eleves->first()->division));
+                $premier = $eleves->first();
+                $sans    = $premier->division === null
+                    && in_array($this->classeLabel($premier->classe), $niveauxAvecDivision, true);
+
+                $zip->addFile($tmp, $this->cardsFileName($ecole, $premier->classe, $premier->division, $sans));
             }
 
             // ZipArchive lit les fichiers au moment de close() : ne rien supprimer avant

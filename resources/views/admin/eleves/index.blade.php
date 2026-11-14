@@ -392,10 +392,31 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         addOption('', '-- Classe --');
-        classes.forEach(function (c) {
-            addOption(c.value, c.label + ' — ' + c.total + (c.total > 1 ? ' élèves' : ' élève'));
+
+        const texte = function (o) {
+            return o.label + ' — ' + o.total + (o.total > 1 ? ' élèves' : ' élève');
+        };
+        let lots = 0; // nombre de PDF distincts (la ligne "toute la classe" n'en est pas un)
+
+        classes.forEach(function (niveau) {
+            if (niveau.options.length === 1) {
+                addOption(niveau.options[0].value, texte(niveau.options[0]));
+                lots += 1;
+                return;
+            }
+            const groupe = document.createElement('optgroup');
+            groupe.label = niveau.label;
+            niveau.options.forEach(function (o) {
+                const opt = document.createElement('option');
+                opt.value = o.value;
+                opt.textContent = texte(o);
+                groupe.appendChild(opt);
+                if (!o.aggregate) lots += 1;
+            });
+            classeSelect.appendChild(groupe);
         });
-        if (classes.length > 1) {
+
+        if (lots > 1) {
             addOption('all', 'Toutes les classes (ZIP)');
         }
         classeSelect.disabled = false;
