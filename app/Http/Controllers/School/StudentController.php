@@ -13,6 +13,18 @@ use Endroid\QrCode\Writer\PngWriter;
 use App\Models\SchoolYear; 
 class StudentController extends Controller
 {
+    /**
+     * Un compte école ne peut agir que sur les élèves de SON école.
+     * Sans cette vérification, n'importe quel identifiant d'élève était accepté.
+     */
+    private function authorizeEleve(Eleve $eleve): void
+    {
+        abort_unless(
+            optional(auth()->user()->ecole)->id === $eleve->ecole_id,
+            403
+        );
+    }
+
     // public function index(Request $request)
     // {
     //     $selectedClasse = $request->classe_id ?? null;
@@ -167,6 +179,8 @@ class StudentController extends Controller
 
 public function update(Request $request, Eleve $eleve)
 {
+    $this->authorizeEleve($eleve);
+
     $validated = $request->validate([
         'nom'                 => 'required|string|max:255',
         'prenom'              => 'required|string|max:255',
@@ -195,14 +209,22 @@ public function update(Request $request, Eleve $eleve)
 
     public function edit(Eleve $eleve)
     {
+        $this->authorizeEleve($eleve);
+
         $classes = Classe::orderBy('nom')->get();
         return view('school.eleves.edit', compact('eleve', 'classes'));
     }
 
     public function destroy(Eleve $eleve)
     {
+        $this->authorizeEleve($eleve);
+
         if ($eleve->photo && Storage::disk('public')->exists($eleve->photo)) {
             Storage::disk('public')->delete($eleve->photo);
+        }
+
+        if ($eleve->qr_code && Storage::disk('public')->exists($eleve->qr_code)) {
+            Storage::disk('public')->delete($eleve->qr_code);
         }
 
         $eleve->delete();
@@ -219,6 +241,7 @@ public function downloadCard($id)
 {
     // On récupère l'élève avec sa classe et son école
     $eleve = Eleve::with(['classe'])->findOrFail($id);
+    $this->authorizeEleve($eleve);
     
     // On récupère l'année scolaire active
     $activeYear = SchoolYear::where('is_active', 1)->first();
@@ -244,7 +267,8 @@ public function viewCards(Request $request)
     $activeYear = SchoolYear::where('is_active', 1)->first();
     
     // On peut filtrer par classe si on veut
-    $query = Eleve::with('classe');
+    $query = Eleve::with('classe')
+        ->where('ecole_id', optional(auth()->user()->ecole)->id);
     if ($request->classe_id) {
         $query->where('classe_id', $request->classe_id);
     }

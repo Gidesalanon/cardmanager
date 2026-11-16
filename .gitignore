@@ -23,3 +23,8 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 composer.lock
+
+# Fichiers parasites (journal PHP du serveur, sauvegardes, copies de .env)
+error_log
+/*.sql
+.env.save

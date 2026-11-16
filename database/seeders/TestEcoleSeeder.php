@@ -13,6 +13,12 @@ class TestEcoleSeeder extends Seeder
 {
     public function run(): void
     {
+        // Données de TEST (mot de passe connu, année scolaire fictive) : jamais en production
+        if (! app()->environment(['local', 'testing'])) {
+            $this->command->warn('TestEcoleSeeder ignoré : environnement "' . app()->environment() . '".');
+            return;
+        }
+
         // 1. Créer une année scolaire active
         $schoolYear = SchoolYear::create([
             'label' => '2025-2026',
