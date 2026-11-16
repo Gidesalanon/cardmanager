@@ -402,31 +402,52 @@ public function update(Request $request, Eleve $eleve)
         $eleve->load(['ecole', 'classe']);
         $activeYear = \App\Models\SchoolYear::active()->first();
 
+        // Binaire wkhtmltoimage : chemin configurable (WKHTML_IMG_BINARY, voir config/snappy.php),
+        // ancien chemin Windows conservé en secours pour le poste local.
+        $wkhtmltoimage = collect([
+            config('snappy.image.binary'),
+            'C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe',
+        ])->first(fn ($chemin) => $chemin && file_exists($chemin));
+
+        if (!$wkhtmltoimage) {
+            return back()->with('error', "L'export en image n'est pas disponible sur ce serveur (wkhtmltoimage introuvable). Utilisez l'export PDF.");
+        }
+
         $html = view('admin.eleves.card.card', compact('eleve', 'activeYear'))->render();
 
-        $htmlPath = storage_path('app/public/temp_card.html');
-        $imagePath = storage_path('app/public/carte_' . $eleve->matricule_edumaster . '.png');
+        // Fichiers temporaires dans un dossier NON public (jamais accessibles par /storage), nom unique
+        $dossier = storage_path('app/temp');
+        if (!is_dir($dossier)) {
+            mkdir($dossier, 0755, true);
+        }
+
+        $base      = $dossier . DIRECTORY_SEPARATOR . 'carte_' . uniqid();
+        $htmlPath  = $base . '.html';
+        $imagePath = $base . '.png';
 
         file_put_contents($htmlPath, $html);
 
-        // ADAPTE ce chemin si besoin
-        $wkhtmltoimage = '"C:\Program Files\wkhtmltopdf\bin\wkhtmltoimage.exe"';
+        $command = escapeshellarg($wkhtmltoimage)
+            . ' --enable-local-file-access --width 1012 --height 638 '
+            . escapeshellarg($htmlPath) . ' ' . escapeshellarg($imagePath);
 
-        $command = $wkhtmltoimage
-            . " --enable-local-file-access"
-            . " --width 1012"
-            . " --height 638"
-            . " \"$htmlPath\""
-            . " \"$imagePath\"";
+        exec($command . ' 2>&1', $output, $resultCode);
+        @unlink($htmlPath);
 
-        exec($command, $output, $resultCode);
-
-        // DEBUG si problème
         if ($resultCode !== 0 || !file_exists($imagePath)) {
-            dd($output, $resultCode);
+            @unlink($imagePath);
+
+            Log::error('Export image carte : échec de wkhtmltoimage', [
+                'code'   => $resultCode,
+                'sortie' => implode(' | ', array_slice($output, 0, 5)),
+            ]);
+
+            return back()->with('error', "La génération de l'image a échoué. Utilisez l'export PDF.");
         }
 
-        return response()->download($imagePath)->deleteFileAfterSend(true);
+        return response()
+            ->download($imagePath, 'carte_' . Str::slug((string) $eleve->matricule_edumaster) . '.png')
+            ->deleteFileAfterSend(true);
     }
 
 

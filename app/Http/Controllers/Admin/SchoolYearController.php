@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SchoolYearController extends Controller
 {
@@ -107,22 +108,25 @@ class SchoolYearController extends Controller
     }
 
     /**
-     * Activer / désactiver
+     * Activer une année scolaire (les autres sont désactivées).
+     * L'année active ne peut pas être désactivée seule : l'import des élèves et les cartes
+     * ont besoin d'une année active (sans elle, l'import répond 404). Pour la remplacer,
+     * on active une autre année.
      */
     public function toggle(SchoolYear $schoolYear)
     {
-        // Désactiver toutes les autres
-        SchoolYear::where('id', '!=', $schoolYear->id)
-            ->update(['is_active' => false]);
+        if ($schoolYear->is_active) {
+            return back()->with(
+                'error',
+                "L'année scolaire '{$schoolYear->label}' est l'année active : activez une autre année pour la remplacer."
+            );
+        }
 
-        $schoolYear->update([
-            'is_active' => !$schoolYear->is_active,
-        ]);
+        DB::transaction(function () use ($schoolYear) {
+            SchoolYear::where('id', '!=', $schoolYear->id)->update(['is_active' => false]);
+            $schoolYear->update(['is_active' => true]);
+        });
 
-        $message = $schoolYear->is_active
-            ? "Année scolaire '{$schoolYear->label}' activée avec succès."
-            : "Année scolaire '{$schoolYear->label}' désactivée.";
-
-        return back()->with('success', $message);
+        return back()->with('success', "Année scolaire '{$schoolYear->label}' activée avec succès.");
     }
 }

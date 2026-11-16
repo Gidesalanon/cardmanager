@@ -67,7 +67,7 @@ Route::post('/contact', function (\Illuminate\Http\Request $request) {
         return redirect()->back()->withInput()
             ->with('error', 'Une erreur est survenue lors de l\'envoi. Contactez-nous directement au +229 01 66 44 92 32.');
     }
-})->name('contact.send');
+})->middleware('throttle:5,10')->name('contact.send'); // 5 envois / 10 min par visiteur (anti-spam)
 
 /*
 |--------------------------------------------------------------------------
@@ -123,7 +123,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         // Années scolaires
-        Route::resource('school-years', SchoolYearController::class);
+        // show et destroy n'existent pas dans le contrôleur (routes qui menaient à une erreur 500)
+        Route::resource('school-years', SchoolYearController::class)->except(['show', 'destroy']);
         Route::post('school-years/{schoolYear}/toggle', [SchoolYearController::class, 'toggle'])
             ->name('school-years.toggle');
 
@@ -131,7 +132,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('classes', [ClasseController::class, 'index'])->name('classes.index');
 
         // Écoles
-        Route::resource('ecoles', AdminEcoleController::class);
+        Route::resource('ecoles', AdminEcoleController::class)->except(['show']);
 
         // IMPORT (AVANT resource pour éviter conflits de routing)
         Route::get('eleves/import', [AdminStudentImportController::class, 'create'])
@@ -153,6 +154,7 @@ Route::middleware(['auth'])->group(function () {
 
         // GESTION ÉLÈVES
         Route::resource('eleves', AdminStudentController::class)
+            ->except(['show'])
             ->parameters(['eleves' => 'eleve'])
             ->names('students');
 
