@@ -129,6 +129,12 @@ class StudentController extends Controller
     $user  = \Illuminate\Support\Facades\Auth::user();
     $ecole = $user->ecole;
 
+    if (!$ecole) {
+        return redirect()
+            ->route('school.students.index')
+            ->with('error', "Votre compte n'est rattaché à aucune école. Contactez l'administrateur pour faire le lien avec votre école.");
+    }
+
     $validated = $request->validate([
         'classe_id'           => 'required|exists:classes,id',
         'serie'               => 'nullable|string|exists:series,nom',
@@ -182,6 +188,8 @@ public function update(Request $request, Eleve $eleve)
     $this->authorizeEleve($eleve);
 
     $validated = $request->validate([
+        'classe_id'           => 'required|exists:classes,id',
+        'serie'               => 'nullable|string|exists:series,nom',
         'nom'                 => 'required|string|max:255',
         'prenom'              => 'required|string|max:255',
         'sexe'                => 'required|in:M,F',
@@ -192,6 +200,9 @@ public function update(Request $request, Eleve $eleve)
         'matricule_edumaster' => 'nullable|string|unique:eleves,matricule_edumaster,' . $eleve->id,
         'division'            => 'nullable|string|max:12',
     ]);
+
+    $validated['classe_id'] = Classe::resolveId($validated['classe_id'], $validated['serie'] ?? null);
+    unset($validated['serie']);
 
     if ($request->hasFile('photo')) {
         if ($eleve->photo && Storage::disk('public')->exists($eleve->photo)) {
@@ -211,7 +222,20 @@ public function update(Request $request, Eleve $eleve)
     {
         $this->authorizeEleve($eleve);
 
-        $classes = Classe::orderBy('nom')->get();
+        $eleve->load('classe.serie');
+
+        // Un niveau = une seule ligne (6e, 5e... existent en base avec 1 ligne par série,
+        // comme dans create() : sinon le menu afficherait 9 fois "6e" sans distinction).
+        $classes = Classe::orderBy('nom')->get()
+            ->groupBy(function ($classe) {
+                if (preg_match('/(2nde|1ère|Tle)/i', $classe->nom)) {
+                    return $classe->nom;
+                }
+                return preg_replace('/\s+.*/', '', $classe->nom);
+            })
+            ->map(fn ($group) => $group->first())
+            ->values();
+
         return view('school.eleves.edit', compact('eleve', 'classes'));
     }
 

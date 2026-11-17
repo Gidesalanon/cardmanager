@@ -53,8 +53,13 @@
                             <select name="classe_id" id="classe_id" class="form-input" required>
                                 <option value="">Sélectionnez une classe</option>
                                 @foreach($classes as $classe)
-                                    <option value="{{ $classe->id }}" 
-                                        {{ $eleve->classe_id == $classe->id ? 'selected' : '' }}
+                                    @php
+                                        // Même niveau que l'élève (ex. "6e") : on garde son id réel pour ne
+                                        // pas changer sa série silencieusement si la série n'est pas retouchée.
+                                        $memeNiveau = optional($eleve->classe)->nom === $classe->nom;
+                                    @endphp
+                                    <option value="{{ $memeNiveau ? $eleve->classe_id : $classe->id }}"
+                                        {{ $memeNiveau ? 'selected' : '' }}
                                         data-nom="{{ $classe->nom }}">
                                         {{ $classe->nom }}
                                     </option>
@@ -69,7 +74,7 @@
                                 <option value="">Sélectionnez une série</option>
                                 @foreach(\App\Models\Serie::orderBy('nom')->get() as $serie)
                                     <option value="{{ $serie->nom }}" 
-                                        {{ old('serie', $eleve->serie) == $serie->nom ? 'selected' : '' }}>
+                                        {{ old('serie', optional(optional($eleve->classe)->serie)->nom) == $serie->nom ? 'selected' : '' }}>
                                         {{ $serie->nom }}
                                     </option>
                                 @endforeach
