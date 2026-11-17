@@ -10,6 +10,7 @@
 <body>
 
 @php
+if (!function_exists('dynamicFont')) {
 function dynamicFont(string $text, array $steps): string {
     $len = mb_strlen(trim($text));
     foreach ($steps as $limit => $size) {
@@ -17,19 +18,26 @@ function dynamicFont(string $text, array $steps): string {
     }
     return end($steps);
 }
+}
 
+if (!function_exists('cleanText')) {
 function cleanText(string $text): string {
     $text = preg_replace('/_x000[Dd]_/u', ' ', $text);
     $text = preg_replace('/\r\n|\r|\n/', ' ', $text);
     return trim(preg_replace('/\s{2,}/', ' ', $text));
 }
+}
 
+if (!function_exists('isSecondaire')) {
 function isSecondaire(string $nomClasse): bool {
     return (bool) preg_match('/^(6e|5e|4e|3e|2nde|1ère|Tle|Terminale)$/i', trim($nomClasse));
 }
+}
 
+if (!function_exists('afficherSerie')) {
 function afficherSerie(string $nomClasse): bool {
     return (bool) preg_match('/^(2nde|1ère|Tle|Terminale)$/i', trim($nomClasse));
+}
 }
 
 $tricolorePath = public_path('assets/card/tricolore.png');
@@ -139,13 +147,21 @@ else                     { $fontNumTable = '9pt'; $lsNum = '-0.8px'; }
         CARTE D'IDENTITÉ SCOLAIRE : {{ $activeYear->label ?? '' }}
     </div>
 
-    {{-- QR Code --}}
+    {{-- QR Code (rien n'est dessiné si le fichier est introuvable, au lieu d'une croix) --}}
+    @if($eleve->qr_code && is_file(public_path('storage/' . $eleve->qr_code)))
     <img src="{{ public_path('storage/' . $eleve->qr_code) }}"
          style="position:absolute; top:17mm; right:2mm; width:15mm; height:15mm; object-fit:contain;">
+    @endif
 
-    {{-- Photo élève --}}
+    {{-- Photo élève : cadre neutre "PHOTO" si l'élève n'a pas de photo ou si le fichier est introuvable --}}
+    @if($eleve->photo && is_file(public_path('storage/' . $eleve->photo)))
     <img src="{{ public_path('storage/' . $eleve->photo) }}"
          style="position:absolute; top:17mm; left:3.5mm; width:22mm; height:26mm; object-fit:cover;">
+    @else
+    <div style="position:absolute; top:17mm; left:3.5mm; width:22mm; height:26mm; background:#e5e7eb; border:0.2mm solid #cbd5e1; text-align:center;">
+        <div style="margin-top:10.5mm; font-size:6px; color:#6b7280; letter-spacing:0.3mm;">PHOTO</div>
+    </div>
+    @endif
 
     {{-- Infos élève --}}
     <div style="position:absolute; top:17mm; left:28mm; width:40mm; height:29mm; overflow:hidden;">

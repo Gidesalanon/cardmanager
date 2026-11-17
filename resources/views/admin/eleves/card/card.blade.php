@@ -63,7 +63,13 @@ body{ margin:0; font-family: Arial, sans-serif; }
         <div class="red"></div>
     </div>
 
+    @if($eleve->photo && is_file(public_path('storage/'.$eleve->photo)))
     <img src="{{ public_path('storage/'.$eleve->photo) }}" class="photo">
+    @else
+    <div class="photo" style="background:#e5e7eb; border:1px solid #cbd5e1; text-align:center; font-size:8px; color:#6b7280;">
+        <div style="margin-top:10mm;">PHOTO</div>
+    </div>
+    @endif
 
     <div class="info">
         <b>Nom:</b> {{ $eleve->nom }}<br>
@@ -96,7 +102,7 @@ body{ margin:0; font-family: Arial, sans-serif; }
 ANNEE SCOLAIRE: {{ $activeYear->label ?? '' }}
 </div>
 
-<img src="{{ public_path('storage/'.$eleve->qr_code) }}" class="qr">
+@if($eleve->qr_code && is_file(public_path('storage/'.$eleve->qr_code)))<img src="{{ public_path('storage/'.$eleve->qr_code) }}" class="qr">@endif
 
 <div style="position:absolute;bottom:5mm;width:100%;text-align:center;font-size:8px;">
 Real: DONAMI-CHRIST TEL 97 22 48 87
