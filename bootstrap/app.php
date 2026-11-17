@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'role'  => \App\Http\Middleware\RoleMiddleware::class,
             'ecole' => \App\Http\Middleware\EcoleMiddleware::class,
+            'verrou.admin' => \App\Http\Middleware\VerrouAdminMiddleware::class,
         ]);
     })
         ->withExceptions(function (Exceptions $exceptions) {

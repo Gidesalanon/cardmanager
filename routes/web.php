@@ -134,19 +134,23 @@ Route::middleware(['auth'])->group(function () {
         // Écoles
         Route::resource('ecoles', AdminEcoleController::class)->except(['show']);
 
-        // IMPORT (AVANT resource pour éviter conflits de routing)
-        Route::get('eleves/import', [AdminStudentImportController::class, 'create'])
-            ->name('students.import.create');
-        Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])
-            ->name('students.import.preview');
-        Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])
-            ->name('students.import.storeAll');
+        // IMPORT et GENERATION DES CARTES : verrouillables temporairement (voir admin:verrouiller)
+        // sans rien changer tant que le verrou n'est pas activé.
+        Route::middleware('verrou.admin')->group(function () {
+            // IMPORT (AVANT resource pour éviter conflits de routing)
+            Route::get('eleves/import', [AdminStudentImportController::class, 'create'])
+                ->name('students.import.create');
+            Route::post('eleves/import/preview', [AdminStudentImportController::class, 'preview'])
+                ->name('students.import.preview');
+            Route::post('eleves/import/store-all', [AdminStudentImportController::class, 'storeAll'])
+                ->name('students.import.storeAll');
 
-        // EXPORTS (AVANT resource pour éviter conflits)
-        Route::get('/students/export-ecole-cards', [AdminStudentController::class, 'exportEcoleCardsPdf'])
-            ->name('students.export.ecole.cards');
-        Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])
-            ->name('students.export.class.cards');
+            // EXPORTS (AVANT resource pour éviter conflits)
+            Route::get('/students/export-ecole-cards', [AdminStudentController::class, 'exportEcoleCardsPdf'])
+                ->name('students.export.ecole.cards');
+            Route::get('/students/export-class-cards', [AdminStudentController::class, 'exportClassCardsPdf'])
+                ->name('students.export.class.cards');
+        });
 
         // MODIFICATION EN MASSE (division / classe des élèves d'une école)
         Route::post('/students/bulk-update', [AdminStudentController::class, 'bulkUpdate'])
@@ -158,10 +162,12 @@ Route::middleware(['auth'])->group(function () {
             ->parameters(['eleves' => 'eleve'])
             ->names('students');
 
-        Route::get('/students/{eleve}/export-card-pdf', [AdminStudentController::class, 'exportCardPdf'])
-            ->name('students.export.card.pdf');
-        Route::get('/students/{eleve}/export-card-image', [AdminStudentController::class, 'exportCardImage'])
-            ->name('students.export.card.image');
+        Route::middleware('verrou.admin')->group(function () {
+            Route::get('/students/{eleve}/export-card-pdf', [AdminStudentController::class, 'exportCardPdf'])
+                ->name('students.export.card.pdf');
+            Route::get('/students/{eleve}/export-card-image', [AdminStudentController::class, 'exportCardImage'])
+                ->name('students.export.card.image');
+        });
 
         // PROFIL ADMIN
         Route::get('/profile', [\App\Http\Controllers\Admin\AdminProfileController::class, 'edit'])
