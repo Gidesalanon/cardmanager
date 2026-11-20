@@ -91,8 +91,13 @@
                                 <select name="classe_id" id="classe_id" class="form-input" required>
                                     <option value="">Sélectionnez une classe</option>
                                     @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}" 
-                                            {{ $eleve->classe_id == $classe->id ? 'selected' : '' }}
+                                        @php
+                                            // Un niveau = une seule ligne ; on garde l'id réel de l'élève pour
+                                            // ne pas changer sa série si elle n'est pas retouchée.
+                                            $memeNiveau = optional($eleve->classe)->nom === $classe->nom;
+                                        @endphp
+                                        <option value="{{ $memeNiveau ? $eleve->classe_id : $classe->id }}"
+                                            {{ $memeNiveau ? 'selected' : '' }}
                                             data-nom="{{ $classe->nom }}">
                                             {{ $classe->nom }}
                                         </option>
@@ -107,7 +112,7 @@
                                     <option value="">Sélectionnez une série</option>
                                     @foreach (\App\Models\Serie::orderBy('nom')->get() as $serie)
                                         <option value="{{ $serie->nom }}" 
-                                            {{ old('serie', $eleve->serie) == $serie->nom ? 'selected' : '' }}>
+                                            {{ old('serie', optional(optional($eleve->classe)->serie)->nom) == $serie->nom ? 'selected' : '' }}>
                                             {{ $serie->nom }}
                                         </option>
                                     @endforeach
@@ -125,7 +130,7 @@
                             <div class="form-group">
                                 <label class="form-label">Matricule</label>
                                 <input type="text" name="matricule_edumaster" class="form-input" 
-                                       value="{{ old('matricule_edumaster', $eleve->matricule_edumaster) }}" required>
+                                       value="{{ old('matricule_edumaster', $eleve->matricule_edumaster) }}">
                             </div>
 
                             {{-- --- LIGNE 2 --- --}}
@@ -161,7 +166,7 @@
                                 <label class="form-label">Date de naissance</label>
                                 <input type="date" name="date_naissance"
                                        class="form-input"
-                                       value="{{ old('date_naissance',$eleve->date_naissance?->format('Y-m-d')) }}" required>
+                                       value="{{ old('date_naissance',$eleve->date_naissance?->format('Y-m-d')) }}">
                             </div>
 
                             {{-- LIEU NAISSANCE --}}
@@ -169,7 +174,7 @@
                                 <label class="form-label">Lieu de naissance</label>
                                 <input type="text" name="lieu_naissance"
                                        class="form-input"
-                                       value="{{ old('lieu_naissance',$eleve->lieu_naissance) }}" required>
+                                       value="{{ old('lieu_naissance',$eleve->lieu_naissance) }}">
                             </div>
 
                             {{-- TELEPHONE --}}

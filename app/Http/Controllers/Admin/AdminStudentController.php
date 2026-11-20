@@ -374,7 +374,20 @@ public function update(Request $request, Eleve $eleve)
     {
         // Admin : voit toutes les écoles
         $ecoles = Ecole::orderBy('nom_ecole')->get();
-        $classes = Classe::orderBy('nom')->get();
+
+        $eleve->load('classe.serie');
+
+        // Un niveau = une seule ligne (6e, 5e... existent en base avec 1 ligne par série) :
+        // sinon le menu afficherait 9 fois "6e". Même règle que le menu côté école.
+        $classes = Classe::orderBy('nom')->get()
+            ->groupBy(function ($classe) {
+                if (preg_match('/(2nde|1ère|Tle)/i', $classe->nom)) {
+                    return $classe->nom;
+                }
+                return preg_replace('/\s+.*/', '', $classe->nom);
+            })
+            ->map(fn ($group) => $group->first())
+            ->values();
 
         return view('admin.eleves.edit', compact('eleve', 'ecoles', 'classes'));
     }
