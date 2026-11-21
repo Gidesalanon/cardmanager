@@ -35,6 +35,7 @@
                     <th>Téléphone</th>
                     <th>Adresse</th>
                     <th>Directeur</th>
+                    <th>Compte école</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -52,6 +53,13 @@
                                 {{ strtoupper($ecole->directeur->nom) }}
                             @else
                                 <span style="color:#999;">—</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($ecole->user)
+                                {{ $ecole->user->email }}
+                            @else
+                                <span style="color:#c77;">Non rattachée</span>
                             @endif
                         </td>
                         <td style="display:flex; gap:8px;">
@@ -76,7 +84,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" style="text-align:center;">Aucune école enregistrée.</td>
+                        <td colspan="8" style="text-align:center;">Aucune école enregistrée.</td>
                     </tr>
                 @endforelse
             </tbody>

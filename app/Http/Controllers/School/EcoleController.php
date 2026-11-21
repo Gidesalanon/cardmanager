@@ -36,7 +36,7 @@ class EcoleController extends Controller
 
             'directeur.nom'             => 'required|string|max:255',
             'directeur.prenom'          => 'required|string|max:255',
-            'directeur.sexe'            => 'nullable|in:M,F',
+            'directeur.sexe'            => 'required|in:M,F',
             'directeur.telephone'       => 'nullable|string|max:20',
             'directeur.email'           => 'nullable|email',
 
@@ -45,11 +45,13 @@ class EcoleController extends Controller
             'directeur.cachet'          => 'nullable|image|mimes:png,jpg,jpeg',
         ], [
             'ecole.nom.required'                 => "Le nom de l'école est obligatoire.",
-            'ecole.nom.unique'                   => "Une école avec ce nom existe déjà.",
+            'ecole.nom.unique'                   => "Une école avec ce nom existe déjà. Si c'est la vôtre, contactez l'administrateur : il peut rattacher votre compte à cette école.",
             'ecole.numero_autorisation.required' => "Le numéro d'autorisation est obligatoire.",
             'ecole.numero_autorisation.unique'   => "Ce numéro d'autorisation est déjà utilisé.",
             'directeur.nom.required'             => "Le nom du directeur est obligatoire.",
             'directeur.prenom.required'          => "Le prénom du directeur est obligatoire.",
+            'directeur.sexe.required'            => "Le sexe du directeur est obligatoire.",
+            'directeur.sexe.in'                  => "Le sexe du directeur doit être Masculin ou Féminin.",
         ]);
 
         DB::transaction(function () use ($request) {

@@ -55,6 +55,26 @@
 
                     <hr style="margin: 20px 0; border-color: rgba(255,255,255,0.1);">
 
+                    <h3 class="settings-title">Compte école rattaché</h3>
+
+                    <div class="form-group">
+                        <label class="form-label">Compte qui gère cette école</label>
+                        <select name="compte_user_id" class="form-input">
+                            <option value="">— Aucun compte rattaché —</option>
+                            @foreach($comptes as $compte)
+                                <option value="{{ $compte->id }}"
+                                    {{ (string) old('compte_user_id', $ecole->user_id) === (string) $compte->id ? 'selected' : '' }}>
+                                    {{ $compte->name }} ({{ $compte->email }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <small style="opacity:.7;">Seuls les comptes école qui n'ont pas encore d'école sont proposés. Le compte rattaché gère les élèves de cette école.</small>
+                        @error('compte_user_id')
+                            <small class="text-danger">{{ $message }}</small>
+                        @enderror
+                    </div>
+
+
                     <h3 class="settings-title">Informations du directeur</h3>
 
                     <div class="form-group">
@@ -76,8 +96,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Sexe</label>
-                        <select name="directeur[sexe]" class="form-input">
+                        <label class="form-label">Sexe *</label>
+                        <select name="directeur[sexe]" class="form-input" required>
                             <option value="">— Choisir —</option>
                             <option value="M" {{ old('directeur.sexe', $ecole->directeur->sexe ?? '') == 'M' ? 'selected' : '' }}>Masculin</option>
                             <option value="F" {{ old('directeur.sexe', $ecole->directeur->sexe ?? '') == 'F' ? 'selected' : '' }}>Féminin</option>

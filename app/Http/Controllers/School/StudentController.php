@@ -218,6 +218,12 @@ public function update(Request $request, Eleve $eleve)
         ->with('success', 'Élève modifié avec succès.');
 }
 
+    public function show(Eleve $eleve)
+    {
+        // Pas de fiche dédiée : on renvoie vers la modification (qui contrôle déjà l'appartenance à l'école)
+        return redirect()->route('school.students.edit', $eleve);
+    }
+
     public function edit(Eleve $eleve)
     {
         $this->authorizeEleve($eleve);

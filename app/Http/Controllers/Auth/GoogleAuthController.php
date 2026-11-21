@@ -24,7 +24,7 @@ class GoogleAuthController extends Controller
             [
                 'name' => $googleUser->getName(),
                 'password' => bcrypt(Str::random(16)),
-                'role' => 'user', // ou ecole par défaut
+                'role' => 'ecole', // la colonne users.role n'accepte que admin|ecole
             ]
         );
 

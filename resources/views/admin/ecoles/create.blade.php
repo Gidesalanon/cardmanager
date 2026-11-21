@@ -80,8 +80,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Sexe</label>
-                        <select name="directeur[sexe]" class="form-input">
+                        <label class="form-label">Sexe *</label>
+                        <select name="directeur[sexe]" class="form-input" required>
                             <option value="">— Choisir —</option>
                             <option value="M" {{ old('directeur.sexe') == 'M' ? 'selected' : '' }}>Masculin</option>
                             <option value="F" {{ old('directeur.sexe') == 'F' ? 'selected' : '' }}>Féminin</option>

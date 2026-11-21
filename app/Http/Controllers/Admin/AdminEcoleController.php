@@ -5,15 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Ecole;
 use App\Models\Directeur;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class AdminEcoleController extends Controller
 {
     public function index()
     {
-        $ecoles = Ecole::with('directeur')->orderBy('nom_ecole')->get();
+        $ecoles = Ecole::with(['directeur', 'user'])->orderBy('nom_ecole')->get();
         return view('admin.ecoles.index', compact('ecoles'));
     }
 
@@ -32,7 +34,7 @@ class AdminEcoleController extends Controller
 
             'directeur.nom'             => 'required|string|max:255',
             'directeur.prenom'          => 'required|string|max:255',
-            'directeur.sexe'            => 'nullable|in:M,F',
+            'directeur.sexe'            => 'required|in:M,F',
             'directeur.telephone'       => 'nullable|string|max:20',
             'directeur.email'           => 'nullable|email',
             'directeur.signature'       => 'nullable|image|mimes:png,jpg,jpeg',
@@ -44,6 +46,8 @@ class AdminEcoleController extends Controller
             'ecole.numero_autorisation.unique'   => "Ce numéro d'autorisation est déjà utilisé.",
             'directeur.nom.required'             => "Le nom du directeur est obligatoire.",
             'directeur.prenom.required'          => "Le prénom du directeur est obligatoire.",
+            'directeur.sexe.required'            => "Le sexe du directeur est obligatoire.",
+            'directeur.sexe.in'                  => "Le sexe du directeur doit être Masculin ou Féminin.",
         ]);
 
         DB::transaction(function () use ($request) {
@@ -89,7 +93,16 @@ class AdminEcoleController extends Controller
     public function edit(Ecole $ecole)
     {
         $ecole->load('directeur');
-        return view('admin.ecoles.edit', compact('ecole'));
+
+        // Comptes école qu'on peut rattacher : ceux qui n'ont pas encore d'école, plus le compte actuel
+        $comptes = User::where('role', 'ecole')
+            ->where(function ($q) use ($ecole) {
+                $q->whereDoesntHave('ecole')->orWhere('id', $ecole->user_id);
+            })
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.ecoles.edit', compact('ecole', 'comptes'));
     }
 
     public function update(Request $request, Ecole $ecole)
@@ -102,11 +115,22 @@ class AdminEcoleController extends Controller
 
             'directeur.nom'             => 'required|string|max:255',
             'directeur.prenom'          => 'required|string|max:255',
-            'directeur.sexe'            => 'nullable|in:M,F',
+            'directeur.sexe'            => 'required|in:M,F',
             'directeur.telephone'       => 'nullable|string|max:20',
             'directeur.email'           => 'nullable|email',
             'directeur.signature'       => 'nullable|image|mimes:png,jpg,jpeg',
             'directeur.cachet'          => 'nullable|image|mimes:png,jpg,jpeg',
+
+            'compte_user_id'            => [
+                'nullable', 'integer',
+                Rule::exists('users', 'id')->where('role', 'ecole'),
+                'unique:ecoles,user_id,' . $ecole->id,
+            ],
+        ], [
+            'directeur.sexe.required'  => "Le sexe du directeur est obligatoire.",
+            'directeur.sexe.in'        => "Le sexe du directeur doit être Masculin ou Féminin.",
+            'compte_user_id.exists'    => "Ce compte n'est pas un compte école valide.",
+            'compte_user_id.unique'    => "Ce compte est déjà rattaché à une autre école.",
         ]);
 
         DB::transaction(function () use ($request, $ecole) {
@@ -117,6 +141,12 @@ class AdminEcoleController extends Controller
                 'telephone'           => $request->ecole['telephone'] ?? null,
                 'adresse_ecole'       => $request->ecole['adresse'] ?? null,
             ]);
+
+            // Rattachement / détachement du compte école (uniquement si le champ est envoyé)
+            if ($request->has('compte_user_id')) {
+                $ecole->user_id = $request->input('compte_user_id') ?: null;
+                $ecole->save();
+            }
 
             $directeur     = $ecole->directeur;
             $signaturePath = $directeur->signature;
