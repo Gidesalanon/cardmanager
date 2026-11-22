@@ -232,7 +232,7 @@ else                     { $fontNumTable = '9pt'; $lsNum = '-0.8px'; }
     </div>
 
     <div style="position:absolute; top:19mm; left:0; right:0; height:16mm;">
-        @if($eleve->ecole->directeur->cachet)
+        @if($eleve->ecole->directeur?->cachet)
             <img src="{{ public_path('storage/' . $eleve->ecole->directeur->cachet) }}"
                  style="position:absolute;
                         width:18mm; height:18mm;
@@ -241,7 +241,7 @@ else                     { $fontNumTable = '9pt'; $lsNum = '-0.8px'; }
                         transform:translate(-60%, -50%);
                         opacity:0.90;">
         @endif
-        @if($eleve->ecole->directeur->signature)
+        @if($eleve->ecole->directeur?->signature)
             <img src="{{ public_path('storage/' . $eleve->ecole->directeur->signature) }}"
                  style="position:absolute;
                         width:30mm; height:12mm;

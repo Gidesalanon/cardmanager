@@ -5,7 +5,6 @@ namespace App\Http\Controllers\School;
 use App\Http\Controllers\Controller;
 use App\Models\Classe;
 use App\Models\Partition;
-use App\Models\Serie;
 use Illuminate\Http\Request;
 
 class AjaxController extends Controller
@@ -19,16 +18,6 @@ class AjaxController extends Controller
             ->with('serie')
             ->orderBy('nom')
             ->get();
-    }
-
-    /**
-     * Séries pour une classe secondaire
-     */
-    public function seriesByClasse(Request $request)
-    {
-        return Serie::whereHas('classes', function ($q) use ($request) {
-            $q->where('classes.id', $request->classe_id);
-        })->get();
     }
 
     /**

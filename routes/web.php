@@ -214,7 +214,6 @@ Route::prefix('ecole')->middleware(['ecole'])->name('school.')->group(function (
 
     // Ajax
     Route::get('ajax/classes', [AjaxController::class, 'classesBySection']);
-    Route::get('ajax/series', [AjaxController::class, 'seriesByClasse']);
     Route::get('ajax/partitions', [AjaxController::class, 'partitions']);
 });
 

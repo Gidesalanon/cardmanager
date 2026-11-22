@@ -148,7 +148,7 @@ class AdminEcoleController extends Controller
                 $ecole->save();
             }
 
-            $directeur     = $ecole->directeur;
+            $directeur     = $ecole->directeur ?? $ecole->directeur()->make();
             $signaturePath = $directeur->signature;
             $cachetPath    = $directeur->cachet;
 
@@ -168,7 +168,7 @@ class AdminEcoleController extends Controller
                     ->store('directeurs/cachets', 'public');
             }
 
-            $directeur->update([
+            $directeur->fill([
                 'nom'       => $request->directeur['nom'],
                 'prenom'    => $request->directeur['prenom'],
                 'sexe'      => $request->directeur['sexe'] ?? null,
@@ -176,7 +176,7 @@ class AdminEcoleController extends Controller
                 'email'     => $request->directeur['email'] ?? null,
                 'signature' => $signaturePath,
                 'cachet'    => $cachetPath,
-            ]);
+            ])->save();
         });
 
         return redirect()
