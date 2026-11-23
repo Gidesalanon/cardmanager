@@ -15,7 +15,7 @@
 
                     <div class="form-group">
                         <label class="form-label">Nom</label>
-                        <input type="text" name="label" class="form-input" placeholder="2024-2025" required>
+                        <input type="text" name="label" class="form-input" placeholder="2024-2025" pattern="\s*\d{4}\s*[\-\/–—]\s*\d{4}\s*" title="Exemple : 2027-2028" required>
                     </div>
 
                     <div class="form-group">

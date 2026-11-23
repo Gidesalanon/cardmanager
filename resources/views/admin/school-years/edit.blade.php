@@ -21,6 +21,7 @@
                         <input type="text"
                                name="label"
                                class="form-input"
+                               pattern="\s*\d{4}\s*[\-\/–—]\s*\d{4}\s*" title="Exemple : 2027-2028"
                                value="{{ $schoolYear->label }}">
                     </div>
 

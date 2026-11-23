@@ -9,6 +9,16 @@ use Illuminate\Support\Facades\DB;
 
 class SchoolYearController extends Controller
 {
+    /** « 2027/2028 », « 2027 – 2028 », « 2027 - 2028 » deviennent « 2027-2028 ». */
+    private function normaliserLabel($label): ?string
+    {
+        if ($label === null) {
+            return null;
+        }
+
+        return preg_replace('/\s*[\/\x{2013}\x{2014}\-]\s*/u', '-', trim((string) $label));
+    }
+
     public function index()
     {
         $schoolYears = SchoolYear::orderByDesc('id')->get();
@@ -23,10 +33,14 @@ class SchoolYearController extends Controller
     public function store(Request $request)
     {
         // Validation de base
+        $request->merge(['label' => $this->normaliserLabel($request->input('label'))]);
+
         $request->validate([
-            'label'      => 'required|string|max:50',
+            'label'      => ['required', 'string', 'max:50', 'regex:/^\d{4}-\d{4}$/'],
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after:start_date',
+        ], [
+            'label.regex' => "Le nom de l'année scolaire doit avoir la forme 2027-2028 (quatre chiffres, un tiret, quatre chiffres).",
         ]);
 
         $label = $request->input('label');       // ex: 2024-2025
@@ -69,10 +83,14 @@ class SchoolYearController extends Controller
 
     public function update(Request $request, SchoolYear $schoolYear)
     {
+        $request->merge(['label' => $this->normaliserLabel($request->input('label'))]);
+
         $request->validate([
-            'label'      => 'required|string|max:50',
+            'label'      => ['required', 'string', 'max:50', 'regex:/^\d{4}-\d{4}$/'],
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after:start_date',
+        ], [
+            'label.regex' => "Le nom de l'année scolaire doit avoir la forme 2027-2028 (quatre chiffres, un tiret, quatre chiffres).",
         ]);
 
         $label = $request->input('label');
