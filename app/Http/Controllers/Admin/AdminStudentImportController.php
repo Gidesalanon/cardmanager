@@ -8,6 +8,7 @@ use App\Models\Ecole;
 use App\Models\Eleve;
 use App\Models\SchoolYear;
 use App\Models\Serie;
+use App\Support\ImportMatricules;
 use Carbon\Carbon;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
@@ -285,17 +286,16 @@ class AdminStudentImportController extends Controller
             ], 422);
         }
 
-        // Vérification doublons base
-        if ($matriculesDansFichier->isNotEmpty()) {
-            $existantsEnBase = Eleve::whereIn('matricule_edumaster', $matriculesDansFichier->toArray())
-                ->pluck('matricule_edumaster')->toArray();
-            if (!empty($existantsEnBase)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => count($existantsEnBase) . ' matricule(s) déjà enregistré(s) : ' . implode(', ', $existantsEnBase),
-                    'type'    => 'duplicate_matricule',
-                ], 422);
-            }
+        // Matricules déjà en base : on n'importe que les NOUVEAUX élèves et on explique précisément le reste
+        // (déjà dans cette école / dans une autre école / matricule d'un autre élève). Rien n'est écrasé.
+        [$studentsNormalized, $ignores, $resumeIgnores] = ImportMatricules::trier($studentsNormalized, $ecole);
+        if (!empty($ignores) && empty($studentsNormalized)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Aucun nouvel élève à ajouter.\n" . $resumeIgnores,
+                'type'    => 'duplicate_matricule',
+                'ignores' => $ignores,
+            ], 422);
         }
 
         try {
@@ -363,8 +363,9 @@ class AdminStudentImportController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "$successCount élève(s) importé(s) avec succès.",
-                'stats'   => compact('successCount', 'errorCount')
+                'message' => "$successCount élève(s) importé(s) avec succès." . ($resumeIgnores !== '' ? "\n\n" . $resumeIgnores : ''),
+                'stats'   => compact('successCount', 'errorCount'),
+                'ignores' => $ignores,
             ]);
 
         } catch (\Exception $e) {

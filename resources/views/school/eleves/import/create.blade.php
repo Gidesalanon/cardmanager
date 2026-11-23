@@ -47,6 +47,7 @@
     .modal-msg {
         color: var(--text-secondary); line-height: 1.6;
         font-size: 0.9rem; margin-bottom: 22px;
+        white-space: pre-line; text-align: left;
     }
     .btn-close-modal {
         width: 100%; padding: 12px;
@@ -509,7 +510,7 @@ function studentImport() {
                 if (r.ok && d.success) {
                     this.showStatus(
                         'Enregistrement réussi !',
-                        `${d.stats?.success ?? this.students.length} élève(s) ajouté(s) avec succès.`,
+                        d.message || `${d.stats?.successCount ?? this.students.length} élève(s) ajouté(s) avec succès.`,
                         'success', false,
                         () => window.location.href = "{{ route('school.students.index') }}"
                     );

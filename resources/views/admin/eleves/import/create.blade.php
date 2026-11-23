@@ -39,7 +39,7 @@
     .modal-icon.error   { background: rgba(220,38,38,0.1);  color: #dc2626; }
     .modal-icon.success { background: rgba(201,168,76,0.1); color: #c9a84c; }
     .modal-title { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin-bottom: 10px; }
-    .modal-msg   { color: var(--text-secondary); line-height: 1.6; font-size: 0.9rem; margin-bottom: 22px; }
+    .modal-msg   { color: var(--text-secondary); line-height: 1.6; font-size: 0.9rem; margin-bottom: 22px; white-space: pre-line; text-align: left; }
 
     .btn-close-modal {
         width: 100%; padding: 12px;
@@ -449,7 +449,7 @@ function adminImport() {
                 if (r.ok && d.success) {
                     this.showStatus(
                         'Enregistrement réussi !',
-                        `${d.stats?.successCount ?? this.students.length} élève(s) ajouté(s) avec succès.`,
+                        d.message || `${d.stats?.successCount ?? this.students.length} élève(s) ajouté(s) avec succès.`,
                         'success',
                         () => window.location.href = "{{ route('admin.students.index') }}"
                     );
