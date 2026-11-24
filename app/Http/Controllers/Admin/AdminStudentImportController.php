@@ -102,10 +102,12 @@ class AdminStudentImportController extends Controller
 
                     foreach ($mappingRules as $field => $synonyms) {
                         foreach ($synonyms as $synonym) {
-                            if (strlen($synonym) < 2 && $synonym !== 'm/f') continue;
+                            // Synonyme normalisé comme l'en-tête (sans accents ni « ° ») : « N° Table » => « n table »
+                            $syn = strtolower(Str::ascii($synonym));
+                            if (strlen($syn) < 2 && $syn !== 'm/f') continue;
                             if (in_array($colLetter, $usedColumns)) continue;
 
-                            if ($val === $synonym || (strlen($synonym) > 2 && str_contains($val, $synonym))) {
+                            if ($val === $syn || (strlen($syn) > 2 && str_contains($val, $syn))) {
                                 if ($field === 'sexe' && isset($rowIndices['prenom']) && $rowIndices['prenom'] === $colLetter) {
                                     continue;
                                 }
