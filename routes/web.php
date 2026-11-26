@@ -156,6 +156,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/students/bulk-update', [AdminStudentController::class, 'bulkUpdate'])
             ->name('students.bulk.update');
 
+        // SUPPRESSION EN MASSE (aperçu, liste Excel à télécharger avant, suppression avec confirmation écrite)
+        Route::post('/students/bulk-delete/preview', [AdminStudentController::class, 'bulkDeletePreview'])
+            ->name('students.bulk.delete.preview');
+        Route::post('/students/bulk-delete/export', [AdminStudentController::class, 'bulkDeleteExport'])
+            ->name('students.bulk.delete.export');
+        Route::post('/students/bulk-delete', [AdminStudentController::class, 'bulkDestroy'])
+            ->name('students.bulk.destroy');
+
         // GESTION ÉLÈVES
         Route::resource('eleves', AdminStudentController::class)
             ->except(['show'])

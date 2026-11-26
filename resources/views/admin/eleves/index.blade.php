@@ -217,6 +217,9 @@
         <button type="button" id="bulk-open" class="btn btn-primary">
             <i class="fa-solid fa-pen-to-square"></i> Modifier la sélection
         </button>
+        <button type="button" id="bulk-delete" class="btn" style="background:#b3261e; color:#fff; border:none;">
+            <i class="fa-solid fa-trash"></i> Supprimer la sélection
+        </button>
         <a href="#" id="bulk-select-all" style="display:none;"></a>
         <a href="#" id="bulk-clear">Tout désélectionner</a>
     </div>
@@ -454,6 +457,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const TOTAL = {{ $eleves->total() }};
     const CSRF = '{{ csrf_token() }}';
     const ACTION = '{{ route('admin.students.bulk.update') }}';
+    const URL_APERCU_SUPPR = '{{ route('admin.students.bulk.delete.preview') }}';
+    const URL_EXPORT_SUPPR = '{{ route('admin.students.bulk.delete.export') }}';
+    const URL_SUPPR = '{{ route('admin.students.bulk.destroy') }}';
     const AVEC_SERIE = /^(2nde|1ère|Tle|Terminale)$/i;
 
     const checkAll = document.getElementById('check-all');
@@ -617,6 +623,107 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.appendChild(f);
         f.submit();
     }
+
+    // ----- Suppression en masse : aperçu -> liste à télécharger -> confirmation écrite -> suppression -----
+    function champsSelection() {
+        const c = [['_token', CSRF], ['ecole_id', ECOLE_ID]];
+        if (modeFiltre) {
+            c.push(['mode', 'filter'], ['expected_total', TOTAL]);
+            Object.keys(BULK.filtres).forEach(function (k) { c.push([k, BULK.filtres[k]]); });
+        } else {
+            c.push(['mode', 'ids']);
+            checked().forEach(function (x) { c.push(['ids[]', x.value]); });
+        }
+        return c;
+    }
+
+    function soumettre(action, champs, nouvelOnglet) {
+        const f = document.createElement('form');
+        f.method = 'POST';
+        f.action = action;
+        if (nouvelOnglet) f.target = '_blank';
+        champs.forEach(function (p) {
+            const i = document.createElement('input');
+            i.type = 'hidden';
+            i.name = p[0];
+            i.value = (p[1] === null || p[1] === undefined) ? '' : p[1];
+            f.appendChild(i);
+        });
+        document.body.appendChild(f);
+        f.submit();
+        if (nouvelOnglet) document.body.removeChild(f);
+    }
+
+    function apercuSuppression() {
+        const corps = new URLSearchParams();
+        champsSelection().forEach(function (p) { corps.append(p[0], (p[1] === null || p[1] === undefined) ? '' : p[1]); });
+        return fetch(URL_APERCU_SUPPR, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: corps
+        }).then(function (r) {
+            return r.json().then(function (j) { return { status: r.status, j: j }; });
+        });
+    }
+
+    function ouvrirSuppression() {
+        if (nombre() === 0) return;
+
+        apercuSuppression().then(function (rep) {
+            const j = rep.j || {};
+            if (!j.ok) {
+                const message = j.message || 'La sélection n\'a pas pu être vérifiée. Rechargez la page et recommencez.';
+                Swal.fire({ icon: 'error', title: 'Suppression impossible', text: message });
+                return;
+            }
+
+            const lignes = j.repartition.map(function (g) {
+                return '<li>' + esc(g.classe) + (g.division ? ' — division ' + esc(g.division) : '') + ' : <strong>' + g.n + '</strong></li>';
+            }).join('');
+            const exemples = (j.exemples || []).map(esc).join(', ');
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Supprimer définitivement ?',
+                html: '<div style="text-align:left; font-size:0.9rem;">'
+                    + '<p style="margin:0 0 8px;"><strong>' + pluriel(j.total) + '</strong> de l\'école <strong>' + esc(j.ecole) + '</strong> seront supprimés '
+                    + '<strong>définitivement</strong>, avec leur photo et leur QR code. Cette action est irréversible.</p>'
+                    + '<ul style="margin:0 0 8px 18px; padding:0;">' + lignes + '</ul>'
+                    + (exemples ? '<p style="margin:0 0 8px; font-size:0.82rem;">Par exemple : ' + exemples + (j.total > 5 ? '…' : '') + '</p>' : '')
+                    + '<p style="margin:0 0 10px;"><a href="#" id="bd-export">Télécharger la liste de ces élèves (Excel) avant de supprimer</a></p>'
+                    + '<label style="font-weight:600;">Pour confirmer, tapez <strong>SUPPRIMER</strong></label>'
+                    + '<input id="bd-conf" class="swal2-input" autocomplete="off" placeholder="SUPPRIMER" style="width:100%; margin:6px 0 0;">'
+                    + '</div>',
+                showCancelButton: true,
+                confirmButtonText: 'Supprimer définitivement',
+                confirmButtonColor: '#b3261e',
+                cancelButtonText: 'Annuler',
+                focusCancel: true,
+                didOpen: function () {
+                    document.getElementById('bd-export').addEventListener('click', function (e) {
+                        e.preventDefault();
+                        soumettre(URL_EXPORT_SUPPR, champsSelection(), true);
+                    });
+                },
+                preConfirm: function () {
+                    const saisie = document.getElementById('bd-conf').value.trim();
+                    if (saisie !== 'SUPPRIMER') {
+                        Swal.showValidationMessage('Tapez exactement SUPPRIMER (en majuscules) pour confirmer.');
+                        return false;
+                    }
+                    return saisie;
+                }
+            }).then(function (r) {
+                if (r.isConfirmed) {
+                    soumettre(URL_SUPPR, champsSelection().concat([['empreinte', j.empreinte], ['confirmation', r.value]]), false);
+                }
+            });
+        }).catch(function () {
+            Swal.fire({ icon: 'error', title: 'Erreur', text: 'Impossible de contacter le serveur. Aucun élève n\'a été supprimé.' });
+        });
+    }
+
+    document.getElementById('bulk-delete').addEventListener('click', ouvrirSuppression);
 
     document.getElementById('bulk-open').addEventListener('click', ouvrir);
     refresh();

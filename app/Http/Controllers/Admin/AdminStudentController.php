@@ -159,6 +159,217 @@ class AdminStudentController extends Controller
     }
 
     /**
+     * Élèves visés par une action en lot (suppression) : mêmes sélections que la modification en lot,
+     * toujours limitées à l'école choisie. Retourne [élèves, total attendu ou null].
+     */
+    private function selectionEnLot(Request $request): array
+    {
+        $request->validate([
+            'ecole_id'       => 'required|exists:ecoles,id',
+            'mode'           => 'required|in:ids,filter',
+            'ids'            => 'required_if:mode,ids|array|max:1000',
+            'ids.*'          => 'integer',
+            'expected_total' => 'nullable|integer|min:0',
+            'f_classe_id'    => 'nullable|integer',
+            'f_nom'          => 'nullable|string|max:100',
+            'f_sexe'         => 'nullable|in:M,F',
+            'f_division'     => 'nullable|string|max:12',
+        ]);
+
+        $ecoleId = (int) $request->ecole_id;
+        $query   = Eleve::query()->where('ecole_id', $ecoleId);
+        $attendu = null;
+
+        if ($request->mode === 'ids') {
+            $ids     = array_values(array_unique(array_map('intval', $request->ids)));
+            $attendu = count($ids);
+            $query->whereIn('id', $ids);
+        } else {
+            $this->appliquerFiltres($query, [
+                'ecole_id'  => $ecoleId,
+                'classe_id' => $request->f_classe_id,
+                'nom'       => $request->f_nom,
+                'sexe'      => $request->f_sexe,
+                'division'  => $request->f_division,
+            ]);
+
+            if ($request->filled('expected_total')) {
+                $attendu = (int) $request->expected_total;
+            }
+        }
+
+        $eleves = $query->with(['classe.serie', 'ecole:id,nom_ecole'])
+            ->orderBy('classe_id')->orderBy('division')->orderBy('nom')->orderBy('prenom')
+            ->get();
+
+        return [$eleves, $attendu];
+    }
+
+    /** Message d'erreur si la sélection n'est pas utilisable pour une suppression, sinon null. */
+    private function erreurSelectionEnLot($eleves, ?int $attendu): ?string
+    {
+        $total = $eleves->count();
+
+        if ($total === 0) {
+            return 'Aucun élève concerné.';
+        }
+        if ($total > 1000) {
+            return 'Trop d\'élèves en une fois (maximum 1000). Affinez le filtre ou la sélection.';
+        }
+        if ($attendu !== null && $attendu !== $total) {
+            return 'La sélection ne correspond plus aux élèves de cette école. Rechargez la page et recommencez.';
+        }
+
+        return null;
+    }
+
+    private function empreinteSelection($eleves): string
+    {
+        return sha1($eleves->pluck('id')->sort()->implode(','));
+    }
+
+    /**
+     * Suppression en lot, étape 1 : aperçu (rien n'est supprimé).
+     * Donne le nombre d'élèves, leur répartition par classe et division, et une empreinte de la sélection
+     * que la suppression devra représenter pour agir sur exactement les mêmes élèves.
+     */
+    public function bulkDeletePreview(Request $request)
+    {
+        [$eleves, $attendu] = $this->selectionEnLot($request);
+
+        if ($erreur = $this->erreurSelectionEnLot($eleves, $attendu)) {
+            return response()->json(['ok' => false, 'message' => $erreur], 422);
+        }
+
+        $repartition = $eleves
+            ->groupBy(fn ($e) => ($e->classe ? $this->classeLabel($e->classe) : 'Classe inconnue') . '|' . ($e->division ?? ''))
+            ->map(function ($groupe, $cle) {
+                [$classe, $division] = explode('|', $cle, 2);
+                return ['classe' => $classe, 'division' => $division !== '' ? $division : null, 'n' => $groupe->count()];
+            })
+            ->values();
+
+        return response()->json([
+            'ok'          => true,
+            'total'       => $eleves->count(),
+            'ecole'       => $eleves->first()->ecole->nom_ecole ?? '',
+            'repartition' => $repartition,
+            'exemples'    => $eleves->take(5)->map(fn ($e) => trim($e->nom . ' ' . $e->prenom))->values(),
+            'empreinte'   => $this->empreinteSelection($eleves),
+        ]);
+    }
+
+    /**
+     * Suppression en lot, étape 2 (facultative) : télécharger la liste des élèves visés, au format Excel
+     * réimportable (mêmes en-têtes que l'import), pour pouvoir les remettre si c'était une erreur.
+     */
+    public function bulkDeleteExport(Request $request)
+    {
+        [$eleves, $attendu] = $this->selectionEnLot($request);
+
+        if ($erreur = $this->erreurSelectionEnLot($eleves, $attendu)) {
+            return back()->with('error', $erreur);
+        }
+
+        $feuille = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws      = $feuille->getActiveSheet();
+        $ws->setTitle('Eleves');
+
+        $entetes = ['N°', 'Matricule', 'Nom et Prénoms', 'Sexe', 'Date de naissance', 'Lieu de naissance', 'Classe', 'Série', 'Division', 'N° Table', 'Téléphone'];
+        foreach ($entetes as $i => $titre) {
+            $ws->setCellValue([$i + 1, 1], $titre);
+        }
+
+        $texte = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
+        foreach ($eleves->values() as $r => $e) {
+            $ligne = $r + 2;
+            $ws->setCellValue([1, $ligne], $r + 1);
+            $ws->setCellValueExplicit([2, $ligne], (string) $e->matricule_edumaster, $texte);
+            $ws->setCellValueExplicit([3, $ligne], trim($e->nom . ' ' . $e->prenom), $texte);
+            $ws->setCellValueExplicit([4, $ligne], (string) $e->sexe, $texte);
+            $ws->setCellValueExplicit([5, $ligne], $e->date_naissance ? $e->date_naissance->format('Y-m-d') : '', $texte);
+            $ws->setCellValueExplicit([6, $ligne], (string) $e->lieu_naissance, $texte);
+            $ws->setCellValueExplicit([7, $ligne], $e->classe ? $e->classe->nom : '', $texte);
+            $ws->setCellValueExplicit([8, $ligne], ($e->classe && $e->classe->serie) ? $e->classe->serie->nom : '', $texte);
+            $ws->setCellValueExplicit([9, $ligne], (string) $e->division, $texte);
+            $ws->setCellValueExplicit([10, $ligne], (string) $e->numero_table, $texte);
+            $ws->setCellValueExplicit([11, $ligne], (string) $e->telephone_tuteur, $texte);
+        }
+
+        $nom = 'eleves_' . Str::slug($eleves->first()->ecole->nom_ecole ?? 'ecole') . '_' . now()->format('Ymd_His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($feuille) {
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($feuille))->save('php://output');
+        }, $nom, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
+    /**
+     * Suppression en lot, étape 3 : suppression définitive des élèves de la sélection.
+     * Garde-fous : confirmation écrite (SUPPRIMER), même empreinte que l'aperçu, école choisie uniquement,
+     * 1000 élèves au maximum, une seule opération (tout ou rien), journal complet. L'école n'est jamais touchée.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'empreinte'    => 'required|string|size:40',
+            'confirmation' => 'required|string|max:50',
+        ]);
+
+        if (trim($request->confirmation) !== 'SUPPRIMER') {
+            return back()->with('error', 'Confirmation incorrecte : tapez exactement SUPPRIMER pour valider. Aucun élève n\'a été supprimé.');
+        }
+
+        [$eleves, $attendu] = $this->selectionEnLot($request);
+
+        if ($erreur = $this->erreurSelectionEnLot($eleves, $attendu)) {
+            return back()->with('error', $erreur . ' Aucun élève n\'a été supprimé.');
+        }
+
+        if (! hash_equals($this->empreinteSelection($eleves), (string) $request->empreinte)) {
+            return back()->with('error', 'La sélection a changé depuis l\'aperçu. Aucun élève n\'a été supprimé : recommencez.');
+        }
+
+        $total   = $eleves->count();
+        $ecole   = $eleves->first()->ecole->nom_ecole ?? '';
+        $ecoleId = (int) $request->ecole_id;
+        $ids     = $eleves->pluck('id')->all();
+        $fichiers = $eleves->pluck('photo')->merge($eleves->pluck('qr_code'))->filter()->unique()->values();
+
+        // Liste complète conservée dans le journal : id|matricule|nom|prénoms|classe|division|date de naissance
+        $liste = $eleves->map(fn ($e) => implode('|', [
+            $e->id, $e->matricule_edumaster, $e->nom, $e->prenom,
+            $e->classe ? $this->classeLabel($e->classe) : '', $e->division ?? '',
+            $e->date_naissance ? $e->date_naissance->format('Y-m-d') : '',
+        ]))->implode(';');
+
+        DB::transaction(function () use ($ids) {
+            Eleve::whereIn('id', $ids)->delete();
+        });
+
+        // Fichiers (photo, QR) supprimés seulement s'ils ne servent plus à aucun autre élève
+        $encoreUtilises = Eleve::whereIn('photo', $fichiers)->pluck('photo')
+            ->merge(Eleve::whereIn('qr_code', $fichiers)->pluck('qr_code'))->unique();
+        foreach ($fichiers->diff($encoreUtilises) as $fichier) {
+            try {
+                Storage::disk('public')->delete($fichier);
+            } catch (\Throwable $t) {
+                Log::warning('Suppression en masse : fichier non supprimé ' . $fichier . ' : ' . $t->getMessage());
+            }
+        }
+
+        Log::info('Suppression en masse des élèves', [
+            'admin_id' => auth()->id(),
+            'ecole_id' => $ecoleId,
+            'ecole'    => $ecole,
+            'mode'     => $request->mode,
+            'nombre'   => $total,
+            'eleves'   => $liste, // format : id|matricule|nom|prénoms|classe|division|naissance
+        ]);
+
+        return back()->with('success', $total . ' élève' . ($total > 1 ? 's' : '') . ' supprimé' . ($total > 1 ? 's' : '') . ' définitivement de l\'école ' . $ecole . '.');
+    }
+
+    /**
      * Modification en masse (division et/ou classe) des élèves d'UNE école.
      * Mode "ids" : élèves cochés ; mode "filter" : tous les élèves du filtre courant.
      * Seuls la division, la classe et la série sont modifiables ici.
@@ -279,7 +490,18 @@ class AdminStudentController extends Controller
     {
         // Admin : voit toutes les écoles
         $ecoles = Ecole::orderBy('nom_ecole')->get();
-        $classes = Classe::orderBy('nom')->get();
+
+        // Un niveau = une seule ligne (6e, 5e... existent en base avec 1 ligne par série) :
+        // sinon le menu afficherait 9 fois "6e". Même règle que la liste, la modification et le menu côté école.
+        $classes = Classe::orderBy('nom')->get()
+            ->groupBy(function ($classe) {
+                if (preg_match('/(2nde|1ère|Tle)/i', $classe->nom)) {
+                    return $classe->nom;
+                }
+                return preg_replace('/\s+.*/', '', $classe->nom);
+            })
+            ->map(fn ($group) => $group->first())
+            ->values();
 
         return view('admin.eleves.create', compact('ecoles', 'classes'));
     }
