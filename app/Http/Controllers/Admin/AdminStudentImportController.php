@@ -9,6 +9,7 @@ use App\Models\Eleve;
 use App\Models\SchoolYear;
 use App\Models\Serie;
 use App\Support\ImportMatricules;
+use App\Support\ImportVerification;
 use Carbon\Carbon;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
@@ -237,11 +238,12 @@ class AdminStudentImportController extends Controller
             return response()->json(['students' => $students]);
 
         } catch (Exception $e) {
-            Log::error('Erreur Preview Import Admin: ' . $e->getMessage());
+            $reference = strtoupper(Str::random(6));
+            Log::error("Erreur Preview Import Admin [$reference]: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'analyse du fichier.',
-                'details' => $e->getMessage()
+                'message' => 'Le fichier n\'a pas pu être lu. Vérifiez qu\'il s\'agit d\'un fichier Excel valide (.xlsx, .xls ou .csv) puis réessayez.',
+                'details' => "Référence : $reference",
             ], 500);
         }
     }
@@ -297,6 +299,17 @@ class AdminStudentImportController extends Controller
                 'message' => "Aucun nouvel élève à ajouter.\n" . $resumeIgnores,
                 'type'    => 'duplicate_matricule',
                 'ignores' => $ignores,
+            ], 422);
+        }
+
+        // Toutes les lignes sont vérifiées AVANT d'écrire quoi que ce soit : l'admin voit d'un coup ce qu'il faut corriger
+        $problemes = ImportVerification::lignesAcorriger($studentsNormalized);
+        if (!empty($problemes)) {
+            return response()->json([
+                'success'   => false,
+                'message'   => ImportVerification::message($problemes),
+                'type'      => 'donnees_invalides',
+                'problemes' => $problemes,
             ], 422);
         }
 
@@ -371,11 +384,12 @@ class AdminStudentImportController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur StoreAll Import Admin: ' . $e->getMessage());
+            $reference = strtoupper(Str::random(6));
+            Log::error("Erreur StoreAll Import Admin [$reference]: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'enregistrement des élèves.',
-                'details' => $e->getMessage()
+                'message' => "Une erreur technique est survenue : aucun élève n'a été enregistré. Vous pouvez réessayer ; si cela se reproduit, communiquez la référence $reference à l'administrateur du système.",
+                'details' => "Référence : $reference",
             ], 500);
         }
     }

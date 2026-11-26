@@ -21,6 +21,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use App\Models\Serie;
 use App\Support\ImportMatricules;
+use App\Support\ImportVerification;
 
 class StudentImportController extends Controller
 {
@@ -231,11 +232,12 @@ class StudentImportController extends Controller
             return response()->json(['students' => $students]);
 
         } catch (Exception $e) {
-            Log::error('Erreur Preview Import: ' . $e->getMessage());
+            $reference = strtoupper(Str::random(6));
+            Log::error("Erreur Preview Import [$reference]: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'analyse du fichier.',
-                'details' => $e->getMessage()
+                'message' => 'Le fichier n\'a pas pu être lu. Vérifiez qu\'il s\'agit d\'un fichier Excel valide (.xlsx, .xls ou .csv) puis réessayez.',
+                'details' => "Référence : $reference",
             ], 500);
         }
     }
@@ -353,6 +355,17 @@ class StudentImportController extends Controller
             ], 422);
         }
 
+        // Toutes les lignes sont vérifiées AVANT d'écrire quoi que ce soit : l'admin voit d'un coup ce qu'il faut corriger
+        $problemes = ImportVerification::lignesAcorriger($studentsNormalized);
+        if (!empty($problemes)) {
+            return response()->json([
+                'success'   => false,
+                'message'   => ImportVerification::message($problemes),
+                'type'      => 'donnees_invalides',
+                'problemes' => $problemes,
+            ], 422);
+        }
+
         try {
             DB::transaction(function () use ($studentsNormalized, $request, $ecole, &$successCount, &$errorCount) {
                 foreach ($studentsNormalized as $index => $s) {
@@ -424,11 +437,12 @@ class StudentImportController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur StoreAll Import: ' . $e->getMessage());
+            $reference = strtoupper(Str::random(6));
+            Log::error("Erreur StoreAll Import [$reference]: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'enregistrement des élèves.',
-                'details' => $e->getMessage()
+                'message' => "Une erreur technique est survenue : aucun élève n'a été enregistré. Vous pouvez réessayer ; si cela se reproduit, communiquez la référence $reference à l'administrateur du système.",
+                'details' => "Référence : $reference",
             ], 500);
         }
     }
