@@ -60,8 +60,8 @@ class EcoleController extends Controller
                 'user_id'             => Auth::id(),
                 'nom_ecole'           => $request->ecole['nom'],
                 'numero_autorisation' => $request->ecole['numero_autorisation'],
-                'telephone'           => $request->ecole['telephone'] ?? null,
-                'adresse_ecole'       => $request->ecole['adresse'] ?? null,
+                'telephone'           => $request->ecole['telephone'] ?? '',
+                'adresse_ecole'       => $request->ecole['adresse'] ?? '',
             ]);
 
             $signaturePath = null;

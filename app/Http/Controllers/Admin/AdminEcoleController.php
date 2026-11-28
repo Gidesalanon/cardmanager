@@ -56,8 +56,8 @@ class AdminEcoleController extends Controller
                 'user_id'             => null,
                 'nom_ecole'           => $request->ecole['nom'],
                 'numero_autorisation' => $request->ecole['numero_autorisation'],
-                'telephone'           => $request->ecole['telephone'] ?? null,
-                'adresse_ecole'       => $request->ecole['adresse'] ?? null,
+                'telephone'           => $request->ecole['telephone'] ?? '',
+                'adresse_ecole'       => $request->ecole['adresse'] ?? '',
             ]);
 
             $signaturePath = null;
@@ -138,8 +138,8 @@ class AdminEcoleController extends Controller
             $ecole->update([
                 'nom_ecole'           => $request->ecole['nom'],
                 'numero_autorisation' => $request->ecole['numero_autorisation'],
-                'telephone'           => $request->ecole['telephone'] ?? null,
-                'adresse_ecole'       => $request->ecole['adresse'] ?? null,
+                'telephone'           => $request->ecole['telephone'] ?? '',
+                'adresse_ecole'       => $request->ecole['adresse'] ?? '',
             ]);
 
             // Rattachement / détachement du compte école (uniquement si le champ est envoyé)

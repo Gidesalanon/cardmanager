@@ -181,11 +181,13 @@ class StudentImportController extends Controller
 
                 $rawSexe = $getVal('sexe');
                 $s       = strtoupper(trim(Str::ascii($rawSexe)));
-                $sexe    = 'M';
-                if (in_array($s, ['F', 'FEMININ', 'FILLE', 'FEMME'])) {
+                // Sexe : reconnu seulement quand c'est clair. Vide ou inconnu => laissé vide (à choisir dans l'aperçu),
+                // au lieu d'être enregistré « M » en silence.
+                $sexe = '';
+                if ($s !== '' && (substr($s, 0, 1) === 'F' || in_array($s, ['FEMININ', 'FILLE', 'FEMME'], true))) {
                     $sexe = 'F';
-                } elseif (strlen($s) > 0 && substr($s, 0, 1) === 'F') {
-                    $sexe = 'F';
+                } elseif (in_array($s, ['M', 'MASCULIN', 'MALE', 'MASC', 'G', 'GARCON', 'H', 'HOMME'], true)) {
+                    $sexe = 'M';
                 }
 
                 // Matricule
@@ -218,7 +220,7 @@ class StudentImportController extends Controller
                     'nationalite'      => $this->cleanVal($getVal('nationalite')) ?: 'BENIN',
                     'date_naissance'   => $dateNaiss,
                     'lieu_naissance'   => $lieuNaiss ?: '',
-                    'telephone_tuteur' => $getVal('telephone') ?: (auth()->user()->ecole->telephone ?? '00000000'),
+                    'telephone_tuteur' => $getVal('telephone') ?: (auth()->user()->ecole->telephone ?: '00000000'),
                 ];
             }
 
@@ -406,7 +408,7 @@ class StudentImportController extends Controller
 
                     $telephone = (!empty($s['telephone_tuteur']) && $s['telephone_tuteur'] !== '00000000')
                         ? $s['telephone_tuteur']
-                        : ($ecole->telephone ?? '00000000');
+                        : ($ecole->telephone ?: '00000000');
 
                     Eleve::create([
                         'ecole_id'            => $ecole->id,

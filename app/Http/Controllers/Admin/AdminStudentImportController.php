@@ -68,7 +68,7 @@ class AdminStudentImportController extends Controller
             $telEcole = '00000000';
             if ($request->filled('ecole_id')) {
                 $ecolePreview = Ecole::find($request->ecole_id);
-                $telEcole     = $ecolePreview->telephone ?? '00000000';
+                $telEcole     = $ecolePreview->telephone ?: '00000000';
             }
 
             $mappingRules = [
@@ -182,11 +182,13 @@ class AdminStudentImportController extends Controller
 
                 $rawSexe = $getVal('sexe');
                 $s       = strtoupper(trim(Str::ascii($rawSexe)));
-                $sexe    = 'M';
-                if (in_array($s, ['F', 'FEMININ', 'FILLE', 'FEMME'])) {
+                // Sexe : reconnu seulement quand c'est clair. Vide ou inconnu => laissé vide (à choisir dans l'aperçu),
+                // au lieu d'être enregistré « M » en silence.
+                $sexe = '';
+                if ($s !== '' && (substr($s, 0, 1) === 'F' || in_array($s, ['FEMININ', 'FILLE', 'FEMME'], true))) {
                     $sexe = 'F';
-                } elseif (strlen($s) > 0 && substr($s, 0, 1) === 'F') {
-                    $sexe = 'F';
+                } elseif (in_array($s, ['M', 'MASCULIN', 'MALE', 'MASC', 'G', 'GARCON', 'H', 'HOMME'], true)) {
+                    $sexe = 'M';
                 }
 
                 // Matricule — getFormattedValue pour éviter float
@@ -353,7 +355,7 @@ class AdminStudentImportController extends Controller
 
                     $telephone = (!empty($s['telephone_tuteur']) && $s['telephone_tuteur'] !== '00000000')
                         ? $s['telephone_tuteur']
-                        : ($ecole->telephone ?? '00000000');
+                        : ($ecole->telephone ?: '00000000');
 
                     Eleve::create([
                         'ecole_id'            => $ecole->id,

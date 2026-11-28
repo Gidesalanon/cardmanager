@@ -45,6 +45,10 @@ class ImportVerification
                 $raisons[] = 'prénoms manquants';
             }
 
+            if (! in_array(strtoupper(trim((string) ($s['sexe'] ?? ''))), ['M', 'F'], true)) {
+                $raisons[] = 'sexe manquant ou non reconnu (choisissez M ou F)';
+            }
+
             $date = $s['date_naissance'] ?? null;
             if (empty($date)) {
                 $raisons[] = 'date de naissance manquante';

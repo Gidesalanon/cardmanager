@@ -195,6 +195,12 @@
                 <div>
                     <div class="card-title">Aperçu — <span x-text="students.length"></span> élève(s) détecté(s)</div>
                     <div class="card-subtitle">Vérifiez et corrigez avant d'enregistrer</div>
+                    <div x-show="sansSexe() > 0" x-cloak style="margin-top:8px; font-size:0.85rem; color:#b3261e;">
+                        <span x-text="sansSexe()"></span> élève(s) sans sexe reconnu dans le fichier (case « ? » en rouge).
+                        Pour ces lignes seulement :
+                        <button type="button" @click="definirSexe('M')" style="margin-left:6px; padding:2px 10px; cursor:pointer;">tout en M (garçons)</button>
+                        <button type="button" @click="definirSexe('F')" style="margin-left:4px; padding:2px 10px; cursor:pointer;">tout en F (filles)</button>
+                    </div>
                 </div>
             </div>
 
@@ -270,7 +276,8 @@
                                 <td><input class="form-input" x-model="s.nom" style="min-width:100px;"></td>
                                 <td><input class="form-input" x-model="s.prenom" style="min-width:120px;"></td>
                                 <td>
-                                    <select class="form-input" x-model="s.sexe" style="min-width:65px;">
+                                    <select class="form-input" x-model="s.sexe" :style="'min-width:65px;' + (!s.sexe ? 'border-color:#b3261e;' : '')">
+                                        <option value="">?</option>
                                         <option value="M">M</option>
                                         <option value="F">F</option>
                                     </select>
@@ -392,7 +399,7 @@ function adminImport() {
                 }
                 this.students = (d.students ?? []).map(s => ({
                     ...s,
-                    sexe: s.sexe ? s.sexe.toString().toUpperCase().substring(0, 1) : 'M',
+                    sexe: s.sexe ? s.sexe.toString().toUpperCase().substring(0, 1) : '',
                     numero_table: s.numero_table ?? ''
                 }));
                 this.progress = 100;
@@ -407,9 +414,13 @@ function adminImport() {
         addAfter(i) {
             this.students.splice(i + 1, 0, {
                 photo: null, matricule: '', numero_table: '', nom: '', prenom: '',
-                sexe: 'M', date_naissance: '', lieu_naissance: '', telephone_tuteur: ''
+                sexe: '', date_naissance: '', lieu_naissance: '', telephone_tuteur: ''
             });
         },
+
+        sansSexe() { return this.students.filter(s => !s.sexe).length; },
+
+        definirSexe(v) { this.students.forEach(s => { if (!s.sexe) s.sexe = v; }); },
 
         remove(i) { this.students.splice(i, 1); },
 
@@ -417,6 +428,10 @@ function adminImport() {
             for (let s of this.students) {
                 if (!s.nom || !s.prenom || !s.date_naissance) {
                     this.notify('Nom, Prénom et Date sont obligatoires pour chaque élève', 'error');
+                    return false;
+                }
+                if (!s.sexe) {
+                    this.notify('Choisissez le sexe (M ou F) de chaque élève', 'error');
                     return false;
                 }
             }
